@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aerodeltanet"
+version = "0.1.0"
+description = "Multifidelity aerodynamic flow prediction on mesh data using GNNs"
+readme = "README.md"
+requires-python = ">=3.10.0"
+dependencies = [
+  "jax",
+  "numpy",
+  "scipy",
+  "h5py",
+  "optax",
+  "matplotlib",
+  "pyvista",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

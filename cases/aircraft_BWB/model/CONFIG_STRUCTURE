@@ -1,0 +1,345 @@
+=== Data Config Summary ===
+   Key: 'topology'
+     Type: <class 'dict'>
+     Number of keys: 5
+     Key: 'foam_mesh'
+       Type: <class 'dict'>
+       Number of keys: 4
+       Key: 'points'
+         Type: <class 'numpy.ndarray'>
+         Shape: (1646226, 3), Dtype: float64
+       Key: 'nPoints'
+         Type: <class 'int'>
+       Key: 'cells'
+         Type: <class 'dict'>
+         Number of keys: 4
+         Key: 'nCells'
+           Type: <class 'int'>
+         Key: 'faces'
+           Type: <class 'list'>
+           Length: 669124
+           First element type: <class 'list'>
+           First element: [0, 1, 2, 3, 4, 5]
+         Key: 'points'
+           Type: <class 'list'>
+           Length: 669124
+           First element type: <class 'list'>
+           First element: [101970, 101971, 101972, 101973, 101974, 101975, 101976, 101977]
+         Key: 'centroids'
+           Type: <class 'numpy.ndarray'>
+           Shape: (669124, 3), Dtype: float64
+       Key: 'faces'
+         Type: <class 'dict'>
+         Number of keys: 6
+         Key: 'nFaces'
+           Type: <class 'int'>
+         Key: 'points'
+           Type: <class 'list'>
+           Length: 2890500
+           First element type: <class 'list'>
+           First element: [101974, 101977, 101976, 101975]
+         Key: 'owner'
+           Type: <class 'numpy.ndarray'>
+           Shape: (2890500,), Dtype: int32
+         Key: 'neighbour'
+           Type: <class 'numpy.ndarray'>
+           Shape: (2890500,), Dtype: int32
+         Key: 'type'
+           Type: <class 'numpy.ndarray'>
+           Shape: (2890500,), Dtype: int32
+         Key: 'surface_neighbors'
+           Type: <class 'numpy.ndarray'>
+           Shape: (24239,), Dtype: int32
+     Key: 'dual_graph'
+       Type: <class 'dict'>
+       Number of keys: 9
+       Key: 'nDualCells'
+         Type: <class 'int'>
+       Key: 'dual_cells'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209, 3), Dtype: float64
+       Key: 'closest_wall_id'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: int64
+       Key: 'dual_cell_types'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: int16
+       Key: 'dual_edges'
+         Type: <class 'numpy.ndarray'>
+         Shape: (2890500, 2), Dtype: int32
+       Key: 'dual_edge_types'
+         Type: <class 'numpy.ndarray'>
+         Shape: (2890500,), Dtype: int32
+       Key: 'num_real_cells'
+         Type: <class 'int'>
+       Key: 'num_ghost_cells'
+         Type: <class 'int'>
+       Key: 'deg'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: int64
+     Key: 'coarse_graph_l1'
+       Type: <class 'dict'>
+       Number of keys: 11
+       Key: 'mapping'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: int64
+       Key: 'counts'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221,), Dtype: int64
+       Key: 'nDualCells'
+         Type: <class 'int'>
+       Key: 'dual_cells'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221, 3), Dtype: float64
+       Key: 'closest_wall_id'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221,), Dtype: int64
+       Key: 'dual_cell_types'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221,), Dtype: int16
+       Key: 'dual_edges'
+         Type: <class 'numpy.ndarray'>
+         Shape: (1415427, 2), Dtype: int64
+       Key: 'dual_edge_types'
+         Type: <class 'numpy.ndarray'>
+         Shape: (1415427,), Dtype: int16
+       Key: 'num_real_cells'
+         Type: <class 'numpy.int64'>
+       Key: 'num_ghost_cells'
+         Type: <class 'numpy.int64'>
+       Key: 'deg'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221,), Dtype: int64
+     Key: 'coarse_graph_l2'
+       Type: <class 'dict'>
+       Number of keys: 11
+       Key: 'mapping'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221,), Dtype: int64
+       Key: 'counts'
+         Type: <class 'numpy.ndarray'>
+         Shape: (119379,), Dtype: int64
+       Key: 'nDualCells'
+         Type: <class 'int'>
+       Key: 'dual_cells'
+         Type: <class 'numpy.ndarray'>
+         Shape: (119379, 3), Dtype: float64
+       Key: 'closest_wall_id'
+         Type: <class 'numpy.ndarray'>
+         Shape: (119379,), Dtype: int64
+       Key: 'dual_cell_types'
+         Type: <class 'numpy.ndarray'>
+         Shape: (119379,), Dtype: int16
+       Key: 'dual_edges'
+         Type: <class 'numpy.ndarray'>
+         Shape: (537468, 2), Dtype: int64
+       Key: 'dual_edge_types'
+         Type: <class 'numpy.ndarray'>
+         Shape: (537468,), Dtype: int16
+       Key: 'num_real_cells'
+         Type: <class 'numpy.int64'>
+       Key: 'num_ghost_cells'
+         Type: <class 'numpy.int64'>
+       Key: 'deg'
+         Type: <class 'numpy.ndarray'>
+         Shape: (119379,), Dtype: int64
+     Key: 'hierarchy'
+       Type: <class 'list'>
+       Length: 3
+       First element type: <class 'str'>
+       First element: dual_graph
+   Key: 'warped_geo'
+     Type: <class 'dict'>
+     Number of keys: 5
+     Key: 'coarse_graph_l1'
+       Type: <class 'dict'>
+       Number of keys: 1
+       Key: 'dual_cells'
+         Type: <class 'numpy.ndarray'>
+         Shape: (305221, 3), Dtype: float32
+     Key: 'coarse_graph_l2'
+       Type: <class 'dict'>
+       Number of keys: 1
+       Key: 'dual_cells'
+         Type: <class 'numpy.ndarray'>
+         Shape: (119379, 3), Dtype: float32
+     Key: 'dual_graph'
+       Type: <class 'dict'>
+       Number of keys: 1
+       Key: 'dual_cells'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209, 3), Dtype: float32
+     Key: 'foam_mesh'
+       Type: <class 'dict'>
+       Number of keys: 3
+       Key: 'cells'
+         Type: <class 'dict'>
+         Number of keys: 2
+         Key: 'centroids'
+           Type: <class 'numpy.ndarray'>
+           Shape: (669124, 3), Dtype: float32
+         Key: 'volumes'
+           Type: <class 'NoneType'>
+       Key: 'faces'
+         Type: <class 'dict'>
+         Number of keys: 3
+         Key: 'areas'
+           Type: <class 'NoneType'>
+         Key: 'centroids'
+           Type: <class 'NoneType'>
+         Key: 'normals'
+           Type: <class 'NoneType'>
+       Key: 'points'
+         Type: <class 'numpy.ndarray'>
+         Shape: (1646226, 3), Dtype: float32
+     Key: 'low_fidelity_inputs'
+       Type: <class 'dict'>
+       Number of keys: 4
+       Key: 'T'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: float32
+       Key: 'U'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209, 3), Dtype: float32
+       Key: 'nuTilda'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: float32
+       Key: 'p'
+         Type: <class 'numpy.ndarray'>
+         Shape: (706209,), Dtype: float32
+   Key: 'data'
+     Type: <class 'dict'>
+     Number of keys: 6
+     Key: 'p'
+       Type: <class 'numpy.ndarray'>
+       Shape: (669124,), Dtype: float64
+     Key: 'U'
+       Type: <class 'numpy.ndarray'>
+       Shape: (669124, 3), Dtype: float64
+     Key: 'T'
+       Type: <class 'numpy.ndarray'>
+       Shape: (669124,), Dtype: float64
+     Key: 'nuTilda'
+       Type: <class 'numpy.ndarray'>
+       Shape: (669124,), Dtype: float64
+     Key: 'lift'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [513057.87308418]
+     Key: 'drag'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [61253.91690672]
+   Key: 'low_fidelity_info'
+     Type: <class 'dict'>
+     Number of keys: 2
+     Key: 'lift'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [538500.50376401]
+     Key: 'drag'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [51638.15233344]
+   Key: 'flow_condition'
+     Type: <class 'dict'>
+     Number of keys: 5
+     Key: 'v_inf'
+       Type: <class 'numpy.float64'>
+     Key: 'alpha'
+       Type: <class 'float'>
+     Key: 'T_inf'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [228.714]
+     Key: 'p_inf'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [30089.6]
+     Key: 'nuTilda_inf'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: float64
+       Values: 4.5e-05
+   Key: 'case_id'
+     Type: <class 'str'>
+   Key: 'info'
+     Type: <class 'dict'>
+     Number of keys: 4
+     Key: 'converged'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: uint8
+       Values: [1]
+     Key: 'file_name'
+       Type: <class 'str'>
+     Key: 'usable'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: bool
+       Values: True
+     Key: 'train'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: bool
+       Values: True
+   Key: 'train'
+     Type: <class 'numpy.ndarray'>
+     Shape: (), Dtype: bool
+     Values: True
+   Key: 'aircraft_geometry'
+     Type: <class 'dict'>
+     Number of keys: 15
+     Key: 'span'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: float64
+       Values: 11.572049538587637
+     Key: 'sweep'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: float64
+       Values: 0.1675723270021967
+     Key: 'wing_chord'
+       Type: <class 'numpy.ndarray'>
+       Shape: (2,), Dtype: float64
+       Values: [0.75524021 1.76360577]
+     Key: 'root_twist'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [0.10124548]
+     Key: 'mid_twist'
+       Type: <class 'numpy.ndarray'>
+       Shape: (2,), Dtype: float64
+       Values: [-0.06460172  0.04678851]
+     Key: 'tip_twist'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [0.13920001]
+     Key: '%_thickness_change_wing'
+       Type: <class 'numpy.ndarray'>
+       Shape: (8, 4), Dtype: float64
+     Key: '%_camber_change_wing'
+       Type: <class 'numpy.ndarray'>
+       Shape: (6, 4), Dtype: float64
+     Key: 'center_chord'
+       Type: <class 'numpy.ndarray'>
+       Shape: (3,), Dtype: float64
+       Values: [-4.33534167  5.91016515 11.15632059]
+     Key: 'center_span'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: float64
+       Values: 11.360030847987325
+     Key: 'center_twist'
+       Type: <class 'numpy.ndarray'>
+       Shape: (2,), Dtype: float64
+       Values: [-0.13018517  0.09804143]
+     Key: 'center_twist_root'
+       Type: <class 'numpy.ndarray'>
+       Shape: (1,), Dtype: float64
+       Values: [0.07929497]
+     Key: '%_thickness_change_body'
+       Type: <class 'numpy.ndarray'>
+       Shape: (8, 4), Dtype: float64
+     Key: '%_camber_change_body'
+       Type: <class 'numpy.ndarray'>
+       Shape: (6, 4), Dtype: float64
+     Key: 'transition_span'
+       Type: <class 'numpy.ndarray'>
+       Shape: (), Dtype: float64
+       Values: 6.3260303556561635
+=========================

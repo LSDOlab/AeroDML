@@ -1,0 +1,12 @@
+# Release asset paths, relative to the repository root.
+
+cases/aircraft_BWB/model/mesh_639k/
+cases/aircraft_BWB/model/saved_parameters/
+cases/datasets/BWB/bwb_geometry/
+cases/datasets/BWB/panel_geometry/
+cases/datasets/BWB/mesh_639k/
+cases/datasets/BWB/storage/
+cases/datasets/BWB/stored_files/
+cases/datasets/BWB/data/sample_case/rans/0.npz
+cases/datasets/BWB/data/sample_case/rans/1.npz
+cases/datasets/BWB/data/sample_case/rans/2.npz

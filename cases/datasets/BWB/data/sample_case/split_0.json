@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "split_name": "split_0",
+  "test_ratio": 0.2,
+  "seed": 133313,
+  "max_residual": 3e-06,
+  "source_files": {
+    "rans": "rans/parsed_case_summary.json"
+  },
+  "n_cases": 3,
+  "n_valid": 3,
+  "n_train": 2,
+  "n_test": 1,
+  "cases": [
+    {
+      "case": 0,
+      "valid": true,
+      "split": "train",
+      "invalid_reasons": []
+    },
+    {
+      "case": 1,
+      "valid": true,
+      "split": "test",
+      "invalid_reasons": []
+    },
+    {
+      "case": 2,
+      "valid": true,
+      "split": "train",
+      "invalid_reasons": []
+    }
+  ]
+}

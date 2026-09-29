@@ -1,0 +1,140 @@
+[
+  {
+    "schema_version": 1,
+    "solver": "rans",
+    "case": 0,
+    "npz_name": "0.npz",
+    "log_found": true,
+    "npz_exists": true,
+    "nans_exist": false,
+    "log_nan_count_total": 0,
+    "log_nan_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "n_iterations": 16,
+    "n_coeff_prints": 16,
+    "last_openfoam_time": 400.0,
+    "n_force_samples": 6,
+    "p_final_residual": 7.733293073796804e-10,
+    "p_residual_norm2": 9779.038985212133,
+    "U_residual_norm2": [
+      64210.71038766052,
+      28919.72918458311,
+      122532.6687791594
+    ],
+    "final_solver_residuals": {
+      "U0": 5.856009979725889e-10,
+      "U1": 7.49266895788656e-11,
+      "U2": 4.300147743403687e-10,
+      "he": 3.347314390537214e-10,
+      "p": 7.733293073796804e-10,
+      "nuTilda": 1.675809468605519e-08
+    },
+    "final_Cl": 0.04384043412369151,
+    "final_Cd": 0.005825232202321871,
+    "final_Cm": -0.03356449854273576,
+    "final_L": 225262.69675871,
+    "final_D": 29957.09527374,
+    "pressure_lift_coeff": 0.04383493012143333,
+    "viscous_lift_coeff": 5.504002258177285e-06,
+    "pressure_drag_coeff": 0.002939251589437638,
+    "viscous_drag_coeff": 0.002885980612884233,
+    "converged": 1,
+    "evaluation_time_seconds": 449.59
+  },
+  {
+    "schema_version": 1,
+    "solver": "rans",
+    "case": 1,
+    "npz_name": "1.npz",
+    "log_found": true,
+    "npz_exists": true,
+    "nans_exist": false,
+    "log_nan_count_total": 0,
+    "log_nan_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "n_iterations": 10,
+    "n_coeff_prints": 10,
+    "last_openfoam_time": 200.0,
+    "n_force_samples": 4,
+    "p_final_residual": 2.554163140913175e-09,
+    "p_residual_norm2": 11342.4471582022,
+    "U_residual_norm2": [
+      82214.31526025366,
+      33917.61246076143,
+      138104.2526750558
+    ],
+    "final_solver_residuals": {
+      "U0": 5.789771979125298e-10,
+      "U1": 5.247555487076065e-10,
+      "U2": 3.084159421687598e-09,
+      "he": 9.135530352021536e-10,
+      "p": 2.554163140913175e-09,
+      "nuTilda": 1.861267715747659e-08
+    },
+    "final_Cl": 0.04143995804445949,
+    "final_Cd": 0.008755433891427371,
+    "final_Cm": -0.03871223679255782,
+    "final_L": 212928.03939503,
+    "final_D": 44986.32461563,
+    "pressure_lift_coeff": 0.04141432592595116,
+    "viscous_lift_coeff": 2.563211850833598e-05,
+    "pressure_drag_coeff": 0.005820852326407585,
+    "viscous_drag_coeff": 0.002934581565019786,
+    "converged": 1,
+    "evaluation_time_seconds": 306.53
+  },
+  {
+    "schema_version": 1,
+    "solver": "rans",
+    "case": 2,
+    "npz_name": "2.npz",
+    "log_found": true,
+    "npz_exists": true,
+    "nans_exist": false,
+    "log_nan_count_total": 0,
+    "log_nan_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "n_iterations": 11,
+    "n_coeff_prints": 11,
+    "last_openfoam_time": 200.0,
+    "n_force_samples": 4,
+    "p_final_residual": 4.549112567789362e-09,
+    "p_residual_norm2": 7212.703382480769,
+    "U_residual_norm2": [
+      99687.15086862164,
+      55894.09934580389,
+      133029.7494175975
+    ],
+    "final_solver_residuals": {
+      "U0": 6.368233809158936e-10,
+      "U1": 7.332325166655381e-10,
+      "U2": 1.276907917073134e-09,
+      "he": 1.35796505011481e-09,
+      "p": 4.549112567789362e-09,
+      "nuTilda": 1.639865275199569e-08
+    },
+    "final_Cl": -0.02370435012570898,
+    "final_Cd": 0.006658109245029693,
+    "final_Cm": 0.01146580744723606,
+    "final_L": -121798.02705822,
+    "final_D": 34221.28842224,
+    "pressure_lift_coeff": -0.02371904368464081,
+    "viscous_lift_coeff": 1.469355893182746e-05,
+    "pressure_drag_coeff": 0.004051380384388455,
+    "viscous_drag_coeff": 0.002606728860641238,
+    "converged": 1,
+    "evaluation_time_seconds": 323.96
+  }
+]

@@ -1,0 +1,1 @@
+remember to symlink the rans data to lustre scratch
