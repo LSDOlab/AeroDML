@@ -1,6 +1,7 @@
 The development of this software was supported (, in part,) by the Air Force Research Laboratory through the Collaborative Center for the Design and Research Of InterDisciplinary Systems (CC DROIDS). Distribution Statement A: Approved for public release; distribution is unlimited. PA# AFRL-2026-3662. This authorization applies to Git commit XXXXX.
 
-## Reference
+<!-- ## Reference -->
+## **AeroDML** (Aerodynamic Deep Multifidelity Learning)
 
 This repository contains the RANS-GNN implementation associated with [Multifidelity Surrogate Modeling for 3D Aerodynamic Flow Field Prediction Using Graph Neural Networks](https://www.researchgate.net/publication/406026389_Multifidelity_Surrogate_Modeling_for_3D_Aerodynamic_Flow_Field_Prediction_Using_Graph_Neural_Networks).
 
