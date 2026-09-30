@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-archive="${1:-aero-delta-net-assets.zip}"
+archive="${1:-aero-dml-assets.zip}"
 
 if [[ -e "$archive" ]]; then
     echo "Error: $archive already exists. Remove it first." >&2

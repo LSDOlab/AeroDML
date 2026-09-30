@@ -1,24 +1,24 @@
 import jax
 jax.config.update("jax_enable_x64", False)
 
-import aerodeltanet as adn
-from aerodeltanet.postprocessing import compute_forces, integrate_forces
+import aerodml as adml
+from aerodml.postprocessing import compute_forces, integrate_forces
 
 import os
 import jax.numpy as jnp
 import numpy as np
 import time
 
-from aerodeltanet.utils import rho_physical
+from aerodml.utils import rho_physical
 from typing import Callable
 
 # model 
-from aerodeltanet.networks import build_network, ParameterInfo, Param
-from aerodeltanet.checks import check_model, check_res_func
-from aerodeltanet.model import get_model
+from aerodml.networks import build_network, ParameterInfo, Param
+from aerodml.checks import check_model, check_res_func
+from aerodml.model import get_model
 
 # loaders
-from aerodeltanet.load_mesh import (
+from aerodml.load_mesh import (
     load_foam_mesh,
     load_dual_graph,
     check_mesh_settings,
@@ -26,11 +26,11 @@ from aerodeltanet.load_mesh import (
     build_geometry_data,
     get_lowfi_CFD_mesh,
 )
-from aerodeltanet.load_panel_data import get_lowfi_panel_mesh, load_lowfi_panel_data
-from aerodeltanet.load_data import load_cfd, load_lowfi_cfd_data
+from aerodml.load_panel_data import get_lowfi_panel_mesh, load_lowfi_panel_data
+from aerodml.load_data import load_cfd, load_lowfi_cfd_data
 
 # training
-from aerodeltanet.train import build_residual_function, train_model
+from aerodml.train import build_residual_function, train_model
 
 # paths
 from pathlib import Path
@@ -224,10 +224,10 @@ def main(
     # ===================================================================================================================
 
     # vid_data = [vid_data[0], vid_data[1]]
-    from aerodeltanet.postprocessing_viz import visualize_surface_post
+    from aerodml.postprocessing_viz import visualize_surface_post
 
     # =========================== Analyze Errors ===========================
-    from aerodeltanet.postprocessing_viz import analyze_training, analyze_pde_errors
+    from aerodml.postprocessing_viz import analyze_training, analyze_pde_errors
     res_func_full = build_residual_function(model, return_full_residuals=True)
     res_func_full_jit = jax.jit(lambda d,f,x: res_func_full(params,d,f,x, topology, constants), device=constants['device'])
     # analyze_training(model_eval, res_func_full_jit, params, train_data, test_data, constants)
@@ -236,7 +236,7 @@ def main(
     # exit()
 
     # =========================== Visualize Force Error Histogram =========================== 
-    from aerodeltanet.postprocessing_viz import plot_case_histogram, analyze_aero_forces #, analyze_model
+    from aerodml.postprocessing_viz import plot_case_histogram, analyze_aero_forces #, analyze_model
     # # plot_case_histogram(model_eval, params, vid_data, constants)
     # # analyze_model(model_eval, params, vid_data, constants, screenshot=True)
     analyze_aero_forces(model_eval, params, vid_data, constants, screenshot=True, model_name=model_name)
@@ -252,10 +252,10 @@ def main(
     #     visualize_surface_post(model_eval, params, config, constants, state = 'T', title = title,camera = 'TE', window_size=(993, 960), return_image=False, y_plane = 0.5, pyvista_mesh_topology=pv_mesh)
 
     # exit()
-    from aerodeltanet.visualize_mesh import build_pyvista_mesh_topology
+    from aerodml.visualize_mesh import build_pyvista_mesh_topology
     pv_mesh = build_pyvista_mesh_topology(topology['foam_mesh'])
     # =========================== Visualize PAPER FIGURES =========================== 
-    # from aerodeltanet.postprocessing_viz import visualize_paper
+    # from aerodml.postprocessing_viz import visualize_paper
     # state, camera= 'p', 'pos_2'
     # # state, camera= 'T', 'pos_2'
     # # state, camera= 'v', 'pos_2'

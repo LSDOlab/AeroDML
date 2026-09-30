@@ -1,7 +1,7 @@
 import os
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
 
-from aerodeltanet.utils import print_content
+from aerodml.utils import print_content
 # ============================================================
 # Edit these settings only
 # ============================================================
@@ -55,8 +55,8 @@ import numpy as np
 import pyvista as pv
 
 from run import DATA_DIR, get_graph, load_cfd_data
-from aerodeltanet.load_panel_data import get_panel_mesh, load_panel_data
-from aerodeltanet.visualize_mesh import available_cameras, visualize_surface
+from aerodml.load_panel_data import get_panel_mesh, load_panel_data
+from aerodml.visualize_mesh import available_cameras, visualize_surface
 
 
 LOAD_SETTINGS = {"verbose": False, "run_checks": True, "visualize": False}
