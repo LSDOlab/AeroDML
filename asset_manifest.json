@@ -1,0 +1,847 @@
+{
+  "source_dataset": "sample_tcp1_b",
+  "source_split": "split_2",
+  "case_ids": [
+    38,
+    132,
+    155
+  ],
+  "total_bytes": 2631647503,
+  "files": [
+    {
+      "path": "cases/aircraft_BWB/model/CONNECTIVITY_NEW.pkl",
+      "bytes": 415248,
+      "sha256": "799dc04f78c16105f725dfd9b8e563de380d52dc470df74a674dd846757ae96a"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/boundary",
+      "bytes": 1310,
+      "sha256": "e23998d95ef1956ed56b66646be51852ce7a32548a0d469110cca9ad4aaa7fbd"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/cellZones",
+      "bytes": 675072,
+      "sha256": "64f7fca518491b5883ce0443a4fea981be40e7a4b19b2393898355dd2d4ffebd"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/faceZones",
+      "bytes": 7070460,
+      "sha256": "b6aa88383327e8e000aa8cdb1b0b8790d7da938290d8a198927022f6a4a08947"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/faces",
+      "bytes": 31253101,
+      "sha256": "e5ae5e532f981155342008b04d1bef4e3ab429cb4217020539734397e0012b5d"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/neighbour",
+      "bytes": 4823110,
+      "sha256": "af28421844d8d768f618429214f2f97303fc1bd36aa38d19bdfd18dd40264bc0"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/owner",
+      "bytes": 4843687,
+      "sha256": "d551ccc3837454c328b39b4dff5459bbff324a5e6ee468f0fa72a1436accb6bc"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/pointZones",
+      "bytes": 877,
+      "sha256": "8718b539b9f3c340bf0f57a50b10f9ff89e81c84340fe44479c0f1c3b52d0b66"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/points",
+      "bytes": 40344214,
+      "sha256": "c82f84d7e21d69e037eeb08460bd944d9d74c46b4272efc58d2cb8f17e695d50"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/sets/nonManifoldPoints.gz",
+      "bytes": 1473649,
+      "sha256": "0679dd37181d313a48049dc8b9977f5e17c253b6487ab8ae684811389a0404d8"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/constant/polyMesh/sets/unusedPoints.gz",
+      "bytes": 51546,
+      "sha256": "8b1bb13fb6e0cad527439807216047b45796b677a28f0c8d423b3c11ca30bdc7"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/dual_coarse_mesh_l1.pkl",
+      "bytes": 13881602,
+      "sha256": "22b0674b8b5bd4f32f2c7a4d0a7a3a29731d2118e5c22dbb81a41d04ae9d2835"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/dual_coarse_mesh_l2.pkl",
+      "bytes": 7076274,
+      "sha256": "c78416bb59839f9c2be4a8aaa8b1bf637fb3aff979c30c56fd526afbce6a9d5e"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/dual_mesh.pkl",
+      "bytes": 14920250,
+      "sha256": "9fc3717987e9e7917c1436e0586d0f13e9d31d285b5b46b97363ff4551649ee2"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/mesh_euler2.foam",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/numpy_mesh.pkl",
+      "bytes": 75560824,
+      "sha256": "b830b04718c1f2410e93e2781b5576f49cb056bce9e59baba7e883ec1abade10"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_112k/projected_surface_mesh_81b11a802a2fdf6e.pickle",
+      "bytes": 478,
+      "sha256": "c30d341aafb526b5b75a6c7bee8bc5fc293d2805ac0d87dd03c41f5df2310a2b"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/cached_routes_NEWHASH/routes.npz",
+      "bytes": 593479232,
+      "sha256": "9a4f58471edc5230a7dbf5118308e8910ac3fcfd62e9c8db49e5d86915ad0ce2"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/cached_routes_a63d3d5d35e5809c/routes.npz",
+      "bytes": 593479232,
+      "sha256": "9a4f58471edc5230a7dbf5118308e8910ac3fcfd62e9c8db49e5d86915ad0ce2"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/boundary",
+      "bytes": 2272,
+      "sha256": "6ae9d1e0582b860001a2392d58c556d50573eab42aef601d6e251658b80edacd"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/cellZones",
+      "bytes": 4573708,
+      "sha256": "52f931394f69ec76266653042a8744092dbcd46326f295c9d478a1e4ed32c809"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/faceZones",
+      "bytes": 27424043,
+      "sha256": "f55e08275c63700926f313488f4799eae0dec03c66c6eb9901125a357d4228e4"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/faces",
+      "bytes": 104706053,
+      "sha256": "089912d9df1ba9c3acf0f786815da3b5d371e78d460f0572a8dbf0c9cca38cd0"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/neighbour",
+      "bytes": 19548802,
+      "sha256": "bc393b21cc01bb3f4ce7f9129ec06edc57c1337978b3b887d678f8e9c9d2e500"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/owner",
+      "bytes": 19718375,
+      "sha256": "d3cfa2f083188105cb11dcbf761741df5dcdba76a0559249691437f6cf0642b5"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/pointZones",
+      "bytes": 877,
+      "sha256": "8718b539b9f3c340bf0f57a50b10f9ff89e81c84340fe44479c0f1c3b52d0b66"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/points",
+      "bytes": 92293952,
+      "sha256": "1ccdb1464cbeae5199d59b6fc00ac8fb3614ffcca2bef213c63438d29e261ec2"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/sets/cellCenters",
+      "bytes": 39607290,
+      "sha256": "046eb3ad1aff9b2e2eb2d895048b4210e781c56d1e2972a7ad04efe8d61c16c4"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/sets/nonManifoldPoints.gz",
+      "bytes": 3410650,
+      "sha256": "d52c8255f82f978b7de8de4e946a7001e587645fe9566751c7b415b1f616e94a"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/sets/nonOrthoFaces.gz",
+      "bytes": 998,
+      "sha256": "3c6c544af3a192e1cf21dcddae29df46a83f8ea286508fc7045857b43e4225a0"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/sets/skewFaces.gz",
+      "bytes": 3131,
+      "sha256": "2191db8eb8b7275bf27bdf7631c1ddd722a289d76ade91e9c33e595b06d95492"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/sets/unusedPoints.gz",
+      "bytes": 81413,
+      "sha256": "2b472c03720448c3cae43079751a69a7775e9e8c9a4a08784e8ac74d1d383370"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/constant/polyMesh/sets/upperTriangularFace.gz",
+      "bytes": 1750,
+      "sha256": "0b1f2f4c0ecf3f510533ae383a68fad2c595a6239750a384c04673002d28fe6a"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/dual_coarse_mesh_l1.pkl",
+      "bytes": 46389168,
+      "sha256": "dd40ac2464823fda5042445fd6dca7be08df502dad1cf6a96774c74eea4b0cb7"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/dual_coarse_mesh_l2.pkl",
+      "bytes": 18085902,
+      "sha256": "50d7b47e24bb7543d48f21afbeb4c51f9dddf55040a9047ac76eb5b40b56f925"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/dual_mesh.pkl",
+      "bytes": 64347456,
+      "sha256": "3555544785a6ac8135fcb8b4e7bd93dc89e482dd9fe697ae66a233f7374b2164"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/mesh_data.foam",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/numpy_mesh.pkl",
+      "bytes": 242506699,
+      "sha256": "f0a262c22ae53a409419e2df53488249b0ebcea76a4fb9442844f0eed56524bd"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/panel_projections_NEWHASH.pickle",
+      "bytes": 127293,
+      "sha256": "bb2d4b12a92536c8857849a12ada1a92a11aea0252179e5bc9a371abce864736"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/projected_surface_mesh_NEWHASH.pickle",
+      "bytes": 2373840,
+      "sha256": "ef34027ee2ec7fb84301289f1856d13810509bf62c9dc4a2aa33b5172b046d4e"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/projected_surface_mesh_a63d3d5d35e5809c.pickle",
+      "bytes": 2512530,
+      "sha256": "8841ca9f7561a63cba703cebcc7431d97c19ff7dc46d76b4e7a53ed1460b30aa"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/surf_dafoam_initial_47466_25.npy",
+      "bytes": 1139312,
+      "sha256": "8eea416f7ea7467ad08345b6ef7bd0420a41cadbe29aa311e36e3f33a5acad66"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/mesh_639k/surf_gid_full_a63d3d5d35e5809c.npy",
+      "bytes": 379856,
+      "sha256": "f1ef1616cdffcb80f7d7c75f59e32a4172b4eb85ce99cf54cf6326638a746e16"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/saved_parameters/EG_RANS_GNN_trained_paper.pickle",
+      "bytes": 985628,
+      "sha256": "68693791b7d387ccbbb52db8a9ec8bce0658d592064e8fe9ea7dc293a1d919fe"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/saved_parameters/PG_RANS_GNN_trained_paper.pickle",
+      "bytes": 985628,
+      "sha256": "044d04779da87a6388465373aee0712bc6262915af5d64174b795a8ecf40b4c5"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/saved_parameters/RANS_GNN_trained_paper.pickle",
+      "bytes": 985628,
+      "sha256": "9ee22a2e53b59fee734fd2ecf1a2e3eaea09aef9330600115a7c9b1aeb8d397c"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/training_stats/training_aux_info_EG_RANS_GNN_trained_paper.jsonl",
+      "bytes": 2714790,
+      "sha256": "eb3428bbaaf7194e1c412de250ea2f0d237693fb2395d75563a246216ff7ac8c"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/training_stats/training_aux_info_PG_RANS_GNN_trained_paper.jsonl",
+      "bytes": 2700399,
+      "sha256": "c17e77ccfc39970c498500ab0e9024285b88130c07d694940948486106403c28"
+    },
+    {
+      "path": "cases/aircraft_BWB/model/training_stats/training_aux_info_RANS_GNN_trained_paper.jsonl",
+      "bytes": 2743637,
+      "sha256": "68bf6a76105023648b9306912088b98bf663632d2b82fda5c29dc8b5879ec036"
+    },
+    {
+      "path": "cases/datasets/BWB/bwb_geometry/bwb_new_stored_refit_new.pickle",
+      "bytes": 459072,
+      "sha256": "d4ceb56ef6da1a123da8e0d5164fb5557d12acd513f2c8e61c8eff066086ff4e"
+    },
+    {
+      "path": "cases/datasets/BWB/bwb_geometry/bwb_stored_refit.pickle",
+      "bytes": 1800648,
+      "sha256": "407caba9b309e77ffbd517a6c2fdae73c26f6516c6724b44b949bdc8aa8cec50"
+    },
+    {
+      "path": "cases/datasets/BWB/bwb_geometry/bwbv2_no_wingtip_coarse_refined_flat.stp",
+      "bytes": 4093346,
+      "sha256": "e40ec2b1fa6cf36bcd870d8983b291fcd5b934e1d19c5a20e8b4538b65ccd747"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/euler/132.npz",
+      "bytes": 21967985,
+      "sha256": "388a1c9f75b8c244da4a1fb8e6aaee3b467f0a0b97cd100a40e3d868b0fe3b5e"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/euler/155.npz",
+      "bytes": 21967985,
+      "sha256": "a61443da3cca751c6ba582453b7bebd9a209f058c83e2b7d43c331ecbff77533"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/euler/38.npz",
+      "bytes": 21967985,
+      "sha256": "526526a53372621568e597c4630636e7abf8462a022e12578e871dea66def5b9"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/panel/132.npz",
+      "bytes": 149210,
+      "sha256": "6a6b260e1946461bbc783b2b97763b1a0e6048ea5dafbb0bf834cc2220eec9ea"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/panel/155.npz",
+      "bytes": 149210,
+      "sha256": "06ca353ec581323317bb4783844e46052a9943df8bc04769c5eefec6b85864b1"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/panel/38.npz",
+      "bytes": 149210,
+      "sha256": "b1609d590529d99abf27817f6e6027a82126375e0e5e247af0705bfb5656354a"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/rans/132.npz",
+      "bytes": 71906591,
+      "sha256": "82304ac96bfc8a2e0ebd4a589b56b7ca48b5d61256ad28798fb395a5272c624f"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/rans/155.npz",
+      "bytes": 71906591,
+      "sha256": "72adc8ba5bb2c07b0fcea344ddebeaddf0b3f5c91cf44d85b764f898cc838d4d"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/rans/38.npz",
+      "bytes": 71906591,
+      "sha256": "252b4f1c82acf552054dd742a7225300d22fd0fd8fbb12ad81fad9bb9ea1da81"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/surf_pts/132.npy",
+      "bytes": 1139312,
+      "sha256": "41a909dd4b36e1e27b7a6cb564fbf9435dbde89334f2e9eabb945bcc0e0d23aa"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/surf_pts/155.npy",
+      "bytes": 1139312,
+      "sha256": "604bb6a38f0580299c0a41eccd415842213cc638f06337b633887f22a68651ec"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/surf_pts/38.npy",
+      "bytes": 1139312,
+      "sha256": "9762594f3e8646c6fa4e9045b98959a4f894920b267fe4db2dd34aba7de62183"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/surf_pts_euler/132.npy",
+      "bytes": 227504,
+      "sha256": "4bc28717d1ec79e8e2dfbb0538342b4d452aa36a3855ff1dbc1f1e64cd4f7514"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/surf_pts_euler/155.npy",
+      "bytes": 227504,
+      "sha256": "90c2cf39ecdc196c18c03cea8aabfefab84fc6301d9d1ce259a8e3199e1b0a19"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/surf_pts_euler/38.npy",
+      "bytes": 227504,
+      "sha256": "597e05ea1c8e93ac795f30cdc32d77704802f00f8c05ce008c4a546e7857c1b5"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/vertices/132.npy",
+      "bytes": 19754840,
+      "sha256": "2afe6115057737980dbe80d9a12842d375e00521e85c16317e368abff8871f2b"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/vertices/155.npy",
+      "bytes": 19754840,
+      "sha256": "0f353d5fd5cbef0e2d5c93f800ded6c9d128cbed286e9cdb00fef23402087108"
+    },
+    {
+      "path": "cases/datasets/BWB/data/sample_dataset/vertices/38.npy",
+      "bytes": 19754840,
+      "sha256": "71820e20e1d7680034f5de1775a14ed7031f712aa2d067778eac5e1297161339"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/0/T",
+      "bytes": 1198,
+      "sha256": "b38c3aec10b67df29426a8c8a5e9a71b9c3901b98e35f62f047b80b144f4b902"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/0/U",
+      "bytes": 1182,
+      "sha256": "e72cdea0fca1bcda0b7faedccc23accd3e0f8d513309c7eadf0195f7cc4bcc27"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/0/alphat",
+      "bytes": 1193,
+      "sha256": "897efd0c3ff6f447bc42dffdd6c2dcae5268f44ee6c12cc290892b90489d519d"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/0/nut",
+      "bytes": 1191,
+      "sha256": "2103c79844daf2dca43371da931486515bcd6beee6883773aeacdae9d9706382"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/0/p",
+      "bytes": 1160,
+      "sha256": "aafb74b3100c465f46d74c77daf9fd8b206f7ce73858db8c366433d97d97d1a9"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/boundary",
+      "bytes": 1310,
+      "sha256": "e23998d95ef1956ed56b66646be51852ce7a32548a0d469110cca9ad4aaa7fbd"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/cellZones.gz",
+      "bytes": 239813,
+      "sha256": "0ffe320fd4da03894154961e797b3beb2f1e0b6a4184894c6751c30fe367654a"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/faceZones.gz",
+      "bytes": 1841469,
+      "sha256": "46fcdc2c658ec3a08568334e79da7fcda0c5db73c1d37625e296e5277385d7a2"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/faces.gz",
+      "bytes": 10412954,
+      "sha256": "3398a4b94b6e92415c5bd7f40cc82c5b1bfb02a7d6a08c540f6cea6755cade28"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/neighbour.gz",
+      "bytes": 1491919,
+      "sha256": "0c709bc87f847e9bb0fbb41ec0a7afcafefe8d43e947483369dcf164398c3e6e"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/owner.gz",
+      "bytes": 240659,
+      "sha256": "81dc08e2f428d173c9fd19f507586e2d84fa1844f8dfcea95db9e7e94c939122"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/pointZones.gz",
+      "bytes": 300,
+      "sha256": "56f2e978c9c21109670cbb450bcb921ee44fe2410f3202d8e705c4729562b96b"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/points.gz",
+      "bytes": 18955793,
+      "sha256": "6400d61fbc68ffc398cef5f72cea131dd7a99e55dd16cd3df7b0063910bab1a0"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/sets/nonManifoldPoints.gz",
+      "bytes": 1473649,
+      "sha256": "0679dd37181d313a48049dc8b9977f5e17c253b6487ab8ae684811389a0404d8"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/polyMesh/sets/unusedPoints.gz",
+      "bytes": 51546,
+      "sha256": "8b1bb13fb6e0cad527439807216047b45796b677a28f0c8d423b3c11ca30bdc7"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/thermophysicalProperties",
+      "bytes": 1503,
+      "sha256": "65d6d7144bd5e07eb663043fcaf8af543907ba92a11ae2432c9d49118fda2a04"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/constant/turbulenceProperties",
+      "bytes": 991,
+      "sha256": "548c55f8d18a489a512c0f5c888d7f6297c54f7ffa4ce1e37aa156e1c05e0370"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/projected_surface_mesh_NEWHASH_EULER.pickle",
+      "bytes": 455222,
+      "sha256": "46a89e4ddf49965f342d077ed4b2b617b3c8b7ded10cf2a9badcc6eeac61456b"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/surf_gid_full_73bcd457b2ef7cfb.npy",
+      "bytes": 75920,
+      "sha256": "89420926ca09c93eba3b4f5a058a167ed8d2d02df2edf77c63596f9534e3405b"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/surf_gid_full_NEWHASH_EULER.npy",
+      "bytes": 75920,
+      "sha256": "89420926ca09c93eba3b4f5a058a167ed8d2d02df2edf77c63596f9534e3405b"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/system/controlDict",
+      "bytes": 2766,
+      "sha256": "d6a7e8fce0d3b66b5db2d8a9a2a7880ecc422668fcc96eaa0f1d0b50c24e1d6b"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/system/decomposeParDict",
+      "bytes": 1136,
+      "sha256": "3611dfcf764dedbccbe91f049c9c4cfa43921c7160e00e7cb7eb639a8ed42a75"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/system/fvSchemes",
+      "bytes": 2410,
+      "sha256": "1bbc01813d9693ce2059f0769a0df7af088c924e8b54bf90beb10a8f5e45e5a2"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_112k/system/fvSolution",
+      "bytes": 1826,
+      "sha256": "0326bdbfc266615c1fe8e94ec7620edf9d266b22ca8d598d2d6539f303ccb88f"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/0/T",
+      "bytes": 1198,
+      "sha256": "a5eee2a7e19b02b42c34fd0f846cb48238499b15e41a91a1dfd9d10e9298e995"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/0/U",
+      "bytes": 1240,
+      "sha256": "d7e7fbc1cb2e81c72e2989d8baef607f4029fc148534cd4b6c22b0a9bb05cd1c"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/0/alphat",
+      "bytes": 1223,
+      "sha256": "87616f2b9d322a99f931adc584470afa2c024a4d925671854441ee4e50d42521"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/0/nuTilda",
+      "bytes": 1242,
+      "sha256": "8f283fa8d807182082a8084272d4f300595b14c818720fa67ba6e170b996d595"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/0/nut",
+      "bytes": 1214,
+      "sha256": "b40c19bbfe20301299b3ca56ed6e75a29fa5c10964211057c54d46bc842c53db"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/0/p",
+      "bytes": 1160,
+      "sha256": "fb9a4055c122bb1d2dc0e90f8a3876cc81661b8b51887294184ddba8c5cb5084"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/boundary",
+      "bytes": 2272,
+      "sha256": "6ae9d1e0582b860001a2392d58c556d50573eab42aef601d6e251658b80edacd"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/cellZones.gz",
+      "bytes": 1416439,
+      "sha256": "418d47d0303f803e28a29df9ca1f74f8b967dceff09138f0196ab70cd61ddbd9"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/faceZones.gz",
+      "bytes": 6434102,
+      "sha256": "3a0e772810ee7082df342baf7683898639c37777ec67f4b9a80bba5cbeb5bf34"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/faces.gz",
+      "bytes": 26539699,
+      "sha256": "96ec6f5ebb7033641ed841c9b6debe3493a7c5364fd6015695dc5a9ab1142113"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/neighbour.gz",
+      "bytes": 5521351,
+      "sha256": "07f4ad753b709e64efc53d3fac068bdf7e41b8bf6df9f34c37c6b5798c51a1c5"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/owner.gz",
+      "bytes": 1284886,
+      "sha256": "9d4eb2f4dcc16418bb1c3cdd35757a4ab2ca32337572b9f1ebb1d14f76c9971a"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/pointZones.gz",
+      "bytes": 309,
+      "sha256": "8c2d7a2841c2a786155140e40a03f992759cdab244ea9594254a56f2b62ad95c"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/points.gz",
+      "bytes": 36522140,
+      "sha256": "3cb13a6c3d8be999460669a872f4422d8fb30532d5d5417e73394fe3545aaf92"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/sets/cellCenters",
+      "bytes": 39607290,
+      "sha256": "046eb3ad1aff9b2e2eb2d895048b4210e781c56d1e2972a7ad04efe8d61c16c4"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/sets/nonManifoldPoints.gz",
+      "bytes": 3410650,
+      "sha256": "d52c8255f82f978b7de8de4e946a7001e587645fe9566751c7b415b1f616e94a"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/sets/nonOrthoFaces.gz",
+      "bytes": 998,
+      "sha256": "3c6c544af3a192e1cf21dcddae29df46a83f8ea286508fc7045857b43e4225a0"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/sets/skewFaces.gz",
+      "bytes": 3131,
+      "sha256": "2191db8eb8b7275bf27bdf7631c1ddd722a289d76ade91e9c33e595b06d95492"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/sets/unusedPoints.gz",
+      "bytes": 81413,
+      "sha256": "2b472c03720448c3cae43079751a69a7775e9e8c9a4a08784e8ac74d1d383370"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/polyMesh/sets/upperTriangularFace.gz",
+      "bytes": 1750,
+      "sha256": "0b1f2f4c0ecf3f510533ae383a68fad2c595a6239750a384c04673002d28fe6a"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/thermophysicalProperties",
+      "bytes": 1507,
+      "sha256": "7451e6ec7ea815de50f5c6d1b0260818b59e35d7a3f16c14be403fac61c1a5df"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/constant/turbulenceProperties",
+      "bytes": 1067,
+      "sha256": "b02e112aa462f8dc1f7978eee73066eb76c5289ef9527841220c1a8c87d9bed6"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/projected_surface_mesh_NEWHASH.pickle",
+      "bytes": 2373840,
+      "sha256": "ef34027ee2ec7fb84301289f1856d13810509bf62c9dc4a2aa33b5172b046d4e"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/projected_surface_mesh_a63d3d5d35e5809c.pickle",
+      "bytes": 2512530,
+      "sha256": "8841ca9f7561a63cba703cebcc7431d97c19ff7dc46d76b4e7a53ed1460b30aa"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/surf_dafoam_initial_47466_25.npy",
+      "bytes": 1139312,
+      "sha256": "8eea416f7ea7467ad08345b6ef7bd0420a41cadbe29aa311e36e3f33a5acad66"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/surf_gid_full_NEWHASH.npy",
+      "bytes": 379856,
+      "sha256": "f1ef1616cdffcb80f7d7c75f59e32a4172b4eb85ce99cf54cf6326638a746e16"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/surf_gid_full_a63d3d5d35e5809c.npy",
+      "bytes": 379856,
+      "sha256": "f1ef1616cdffcb80f7d7c75f59e32a4172b4eb85ce99cf54cf6326638a746e16"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/system/controlDict",
+      "bytes": 2804,
+      "sha256": "6b4ebb44e7e24aece362e1888ce2025f1c714bf00029eb8f26ded9f149f637e6"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/system/decomposeParDict",
+      "bytes": 1136,
+      "sha256": "3611dfcf764dedbccbe91f049c9c4cfa43921c7160e00e7cb7eb639a8ed42a75"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/system/fvSchemes",
+      "bytes": 2410,
+      "sha256": "1bbc01813d9693ce2059f0769a0df7af088c924e8b54bf90beb10a8f5e45e5a2"
+    },
+    {
+      "path": "cases/datasets/BWB/mesh_639k/system/fvSolution",
+      "bytes": 1826,
+      "sha256": "0326bdbfc266615c1fe8e94ec7620edf9d266b22ca8d598d2d6539f303ccb88f"
+    },
+    {
+      "path": "cases/datasets/BWB/panel_geometry/bwbv2_no_wingtip_coarse_refined_flat_5_9_17_5264_cap_tess_3_LE_bunch.stl",
+      "bytes": 1544015,
+      "sha256": "1d1bbe7a8f6489fbc4d94fab5cc24cd00db65014de3884970a04f0d60b683471"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/04749546f2dd2505ea8a9f1ed1266e01a9262660876d9cbefd23e6ce1a08893f.pickle",
+      "bytes": 2291352,
+      "sha256": "8edcd3f32c0133a7be19031b3d63f8fd3bd9b8634a33d25d6c119cd9784c34d5"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/15b68fb62d0ce64786bdc88a5815fa3bb624062c2270c746d4ae8f0a593def3a.pickle",
+      "bytes": 474661,
+      "sha256": "83f61b72327de0249db3cdd3c62b694cc189ebca0f9cd47bf4131d373d6c9ff4"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/50d977ae7efdf321c13f5695634b847a36279018d652330a6ac6acd0353b36dc.pickle",
+      "bytes": 2231407,
+      "sha256": "d605d754a8e40c39e739f55142dc492833a9129346f27e906c2a9f3244419621"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/565d4cd3fbfe0fa4c81f737b5c129542e43214c499a0b243c1d6933d5ca02f8c.pickle",
+      "bytes": 11521335,
+      "sha256": "83a629addea61800cde0b43a5835ae2b5cf20cb08a0bcc847e2bb2753bb3cef0"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/903391c7e4b3fa075f852e2b43a18ec854b06e516dc480d429a76efdf8a6ed66.pickle",
+      "bytes": 462975,
+      "sha256": "a0c97b9cb620537847353102dcbf35957053b928af75a00284f11828dbf53067"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/aa3c08c46dc7545d4549a3553480c11c1aef5913b26fcb97ac657342760c44a5.pickle",
+      "bytes": 2231407,
+      "sha256": "1086da42a358a3830348084a755d28f0deb7cb76e731b0cbbc3f336b9a702039"
+    },
+    {
+      "path": "cases/datasets/BWB/storage/projections_/c36c74141155d866b338624b14693b19266572ab32c9484c95f0aa4841f9e476.pickle",
+      "bytes": 2370097,
+      "sha256": "bd0848c4688eec6160723988d0938f09bef49aa3f60db5f281ec68a33646aa68"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/imports/bwbv2_no_wingtip_coarse_refined_flat_stored_import.pickle",
+      "bytes": 1116864,
+      "sha256": "36f5f12cefa5593941e8f789533833e13230acca2848fc641458dba7abecc818"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/1lV83b.pickle",
+      "bytes": 132539,
+      "sha256": "501aad1ce2ae0e021f8a62c90b5f194cefa53f7b5dbedd992058f74689190316"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/356flI.pickle",
+      "bytes": 2096,
+      "sha256": "ed7770e02703c8460179c49a0ce372069e658817970cd8f92d6b1686f833f992"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/5LMcu5.pickle",
+      "bytes": 392,
+      "sha256": "0ff55028dccaac25906447a11fa26a8759aa5a87b7138ddbee29d29420347b65"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/5oEX4Q.pickle",
+      "bytes": 126875,
+      "sha256": "837c632cf08c6c6f6a2d0cb9ec85ace8ae6c6dc191d8126099a5ee775e63d3e2"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/6lK0fW.pickle",
+      "bytes": 98778,
+      "sha256": "c9ea8ca1dac76d0b8ffefcfc455c254dc14d66804d947338fe05c3d71c15ab0f"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/8EBgNQ.pickle",
+      "bytes": 536,
+      "sha256": "b0c8de4d04ea450be1b320ffdde551a1a63c3c40679d09bdcbd1ab2242d3f6a5"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/9pT6iO.pickle",
+      "bytes": 98778,
+      "sha256": "f8083ffb80ad89540c7c29ab9d000969e65e2a0d3675a5900f640640917bab38"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/AeF5d2.pickle",
+      "bytes": 125082,
+      "sha256": "c7f324ccb90d501a8e074a9c75ce4203c1618d919cd2242099dd441be71aaae1"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/AuiTPN.pickle",
+      "bytes": 2096,
+      "sha256": "587d282a471240914e8353f01a7df3b9c5bee0c940351cf15cdfa5222bd100cb"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/BDlLpq.pickle",
+      "bytes": 512,
+      "sha256": "dd7f47343818fe57059ca9f45488b9e1e846ef0014c8841b275e2a671b03a274"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/BsgTSu.pickle",
+      "bytes": 98778,
+      "sha256": "0d98c3e9e623d011f435813befbbbd206798e327fee49bb5c660fcd37a7c91ea"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/LAy6Q8.pickle",
+      "bytes": 536,
+      "sha256": "c0820df531db96d03075d56cfa96c2d3e92144878a6722c6b067182cf472d03c"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/NMhksn.pickle",
+      "bytes": 98778,
+      "sha256": "8a44819b46f371077fd89202a82c9305ecdde9fc6aec529f52b1769c8280a33f"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/QfADcU.pickle",
+      "bytes": 125082,
+      "sha256": "9d60561e181dcbdc76859d9d5c6b5eff67cefde8efee313b065c470652583d63"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/SxqQQk.pickle",
+      "bytes": 2192,
+      "sha256": "3e33db3f4dbbc2987aa0d7e38a99af768364f323a98fa575675a2fb9f234e69c"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/Up3Sfb.pickle",
+      "bytes": 455222,
+      "sha256": "46a89e4ddf49965f342d077ed4b2b617b3c8b7ded10cf2a9badcc6eeac61456b"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/V9KCof.pickle",
+      "bytes": 98778,
+      "sha256": "0af6a852fff50d43cf4d1e30ccfb020c45f631b336153d108337a2e283cc547b"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/abl89J.pickle",
+      "bytes": 98778,
+      "sha256": "f69e7c9f29f67f0a644d6a28c64cad3120d03ac949834f7f80d25e7a927045d0"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/cCHKY0.pickle",
+      "bytes": 2192,
+      "sha256": "d740ad60226ad4e24d63af862921e473a4df9f6ed0c502ee02b4df5b3253ddd5"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/fcuCzb.pickle",
+      "bytes": 98778,
+      "sha256": "b4cf0fd1bd04f323a77e17a34fdeb95f6574aa208410394ba0962254fb1af69e"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/h8W7PA.pickle",
+      "bytes": 392,
+      "sha256": "16e5142e0bdf413e2f1e75dde9dd51688f0ef46e059d6cea5a278b8162fa92b8"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/iDoVLP.pickle",
+      "bytes": 392,
+      "sha256": "1cce2aeb6f01472208267671ef6f9baa617944b50d97cecf0d7cd6c6aec77828"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/joxF9R.pickle",
+      "bytes": 125082,
+      "sha256": "0a103f471ee32c9e9939177f6e6805f90db5ba42bf8f00c0e24f44676d8e30cd"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/kXcM5Q.pickle",
+      "bytes": 125082,
+      "sha256": "12b26e16ef8b3c99bee565f40109eca82512428d5008fc63ed6d39d3875ea821"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/name_space_dict.pickle",
+      "bytes": 304822,
+      "sha256": "2bd96859f02fcf2438d76e979678cdc7afdfb9e1024ec3f7993a68cc5907b902"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/qfds72.pickle",
+      "bytes": 127293,
+      "sha256": "bb2d4b12a92536c8857849a12ada1a92a11aea0252179e5bc9a371abce864736"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/r7FaBu.pickle",
+      "bytes": 98778,
+      "sha256": "4d44de9aed2c94dec3b7fcd7f6d8943372953ae4c1bedc7bb24770e3c6a30519"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/rDYYcy.pickle",
+      "bytes": 125082,
+      "sha256": "5e78d24bbc07215d25e3fe4116b994ef5b96f3fcf6f742409ddacad8b7f01f42"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/vRS5Rm.pickle",
+      "bytes": 125082,
+      "sha256": "e2eeb47f79a741f7b7d1e9867dbc3bfeee328d95d187f0ae2f26f4f5c72fa7d4"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/vp128N.pickle",
+      "bytes": 392,
+      "sha256": "db34b7958660d289762704cc0a95872e28828b48b303770d3a0e1d2dc0bc822e"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/xlkNeh.pickle",
+      "bytes": 512,
+      "sha256": "9f41a591bb735c383a444e0cb0ffb8d005716604777d496f147c14d7f0cb394c"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/ydbhSJ.pickle",
+      "bytes": 125082,
+      "sha256": "a585759a86ab747caa061ea2c9df7b8c1019c9b4634a148c735e24cdc773dc0c"
+    },
+    {
+      "path": "cases/datasets/BWB/stored_files/projections/zYndgJ.pickle",
+      "bytes": 125082,
+      "sha256": "b9b97480248f835637be9a9d6354d788a7aa0a74d9d463b7117576d9f5cdef30"
+    }
+  ]
+}

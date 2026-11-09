@@ -3,7 +3,7 @@ import numpy as np
 import copy
 import time 
 from .visualize_mesh import visualize_dual, visualize_foam_mesh, visualize_scalars, visualize_coarse
-from .utils import print_content
+from .utils import print_content, aggregate_sum
 
 import jax
 import jax.numpy as jnp
@@ -40,7 +40,7 @@ import pickle
 
 def find_closest_wall_node_id(dual_cells:np.ndarray, dual_cell_types:np.ndarray)->np.ndarray:
     cell_centers = dual_cells                       # (N,3)
-    wall_mask = (dual_cell_types == 1)             
+    wall_mask = (dual_cell_types == 1)              
     wall_node_ids = np.where(wall_mask)[0]          # indices into dual_cells
     wall_points = cell_centers[wall_mask]           # (Nwall,3)
     tree = cKDTree(wall_points)
@@ -262,7 +262,7 @@ def cluster_graph(graph:dict, max_edge_length:float)->dict:
 def build_coarse_dual(dual_mesh:dict, N:int, max_edge_length:float)->dict:
     # We want the coarse dual graph to have the same information as the dual graph (with obviously less nodes and edges) 
     # The only difference is that there will be a mapping from nodes in the coarse dual graph to sets of nodes in the original dual graph
-    # Requirements:
+    # 条件:
     # 1) Do no merge ghost cells at all
     # 2) Only merge real cells that are not adjacent to any ghost cells (perhaps N cells away from any ghost cell?)
     # Prioritize merging cells that are close together in space (short edges)
@@ -348,6 +348,7 @@ def get_coarse_dual_graph(name:str, dual_mesh:dict, foam_mesh:dict, load_setting
 
     if load_settings['run_checks']:
         # Checks:
+        # - idk, do later
         pass
     
     if load_settings['visualize']:
@@ -399,6 +400,7 @@ def get_dual_graph(name:str, foam_mesh:dict, load_settings:dict)->dict:
 
     if load_settings['run_checks']:
         # Checks:
+        # - idk, do later
         pass
     
     if load_settings['visualize']:
@@ -411,12 +413,14 @@ def get_dual_graph(name:str, foam_mesh:dict, load_settings:dict)->dict:
         d = np.linalg.norm(dual_cells - wall_pos, axis=1).astype(np.float32)  # (N,)
 
         # Pick a scale. Smaller => more mass near 1 for very near-wall points.
+        # Try p10 or p20 if you want "0.7 is still close".
         sigma = np.percentile(d, 80).astype(np.float32) + 1e-12
         sigma = 5
 
         # Option A: exponential squash into [0, 1)
         d_tilde = 1.0 - np.exp(-d / sigma)
 
+        # (Optional) if you want the farthest distance to map to exactly 1:
         # d_tilde = d_tilde / (1.0 - np.exp(-d.max() / sigma) + 1e-12)
         # d_tilde = np.clip(d_tilde, 0.0, 1.0)
 
@@ -514,7 +518,7 @@ def build_face_types(faces, nei, bnd):
 
         if ptype == "wall":
             code = 1
-        elif ptype == "patch":
+        elif ptype == "patch":      # freestream (your assumption)
             code = 2
         elif ptype == "symmetry":
             code = 3
@@ -584,7 +588,7 @@ def get_mesh(name:str, load_settings:dict)->dict:
             'points': faces,        # list of lists of point indices for each face
             'owner': owner,         # array of owner cell indices for each face
             'neighbour': neighbour, # array of neighbour cell indices for internal faces
-            'type': types, # integer array indicating face type (0: internal, 1: freestream boundary, 2: wall boundary, 3: symmetry boundary)
+            'type': types, # integer array indicating face type (0: internal, 1: wall boundary, 2: freestream boundary, 3: symmetry boundary)
         }
 
         mesh_dict = {
@@ -602,6 +606,16 @@ def get_mesh(name:str, load_settings:dict)->dict:
     # TODO: we need to move this into initial mesh builder later
     surface_neighbors = find_surface_neighbors(mesh_dict)
     mesh_dict['faces']['surface_neighbors'] = surface_neighbors
+
+    # TODO: we need to move this into initial mesh builder later
+    wall_faces = [
+        np.asarray(face)
+        for face, face_type in zip(mesh_dict["faces"]["points"], mesh_dict["faces"]["type"])
+        if face_type == 1
+    ]
+    global_conn = np.concatenate(wall_faces)
+    wall_ids = np.unique(global_conn)
+    mesh_dict['wall_pt_ids'] = wall_ids
 
     if load_settings['verbose']:
         # print full information about the mesh dict, types and shapes even for lists, dicts etc
@@ -657,7 +671,18 @@ def _compute_centroids(points:jax.Array, cell_points:list[list])->jax.Array:
     flat_idx = np.concatenate([np.asarray(c, dtype=np.int32) for c in cell_points], axis=0)
     cell_id  = np.concatenate([np.full(len(c), i, dtype=np.int32) for i, c in enumerate(cell_points)], axis=0)
     counts = np.bincount(cell_id, minlength=num_cells).astype(np.int32)  # (C,)
-    summed = jnp.zeros((num_cells, 3)).at[cell_id].add(points[flat_idx])
+
+    # summed = jnp.zeros((num_cells, 3)).at[cell_id].add(points[flat_idx])
+    # cell_id = jnp.asarray(cell_id)
+    # flat_idx = jnp.asarray(flat_idx)
+    # summed = jax.lax.fori_loop(
+    #     0,
+    #     flat_idx.shape[0],
+    #     lambda i, x: x.at[cell_id[i]].set(x[cell_id[i]] + points[flat_idx[i]]),
+    #     jnp.zeros((num_cells, 3), dtype=points.dtype),
+    # )
+    summed = aggregate_sum(points[flat_idx], cell_id, num_cells, method='grouped', info=None)
+    # summed = aggregate_sum(points[flat_idx], cell_id, num_cells, method='scatter', info=None)
     return summed / counts[:, None].astype(points.dtype)  # (C, D)
 
 def _compute_new_ghost_points(new_cell_centroids, topology)->jax.Array:
@@ -681,7 +706,20 @@ def _compute_new_ghost_points(new_cell_centroids, topology)->jax.Array:
     assert np.all(counts > 0), f"Error: found ghost cell with count 0, counts: {counts}"
     
     n_ghost = counts.shape[0]
-    summed = jnp.zeros((n_ghost, 3)).at[ghost_id].add(new_points[flat_idx])
+    # summed = jnp.zeros((n_ghost, 3)).at[ghost_id].add(new_points[flat_idx])
+
+    # ghost_id = jnp.asarray(ghost_id)
+    # flat_idx = jnp.asarray(flat_idx)
+    # summed = jax.lax.fori_loop(
+    #     0,
+    #     flat_idx.shape[0],
+    #     lambda i, x: x.at[ghost_id[i]].set(
+    #         x[ghost_id[i]] + new_points[flat_idx[i]]
+    #     ),
+    #     jnp.zeros((n_ghost, 3), dtype=new_points.dtype),
+    # )
+    summed = aggregate_sum(new_points[flat_idx], ghost_id, n_ghost, method='grouped', info=None)
+    # summed = aggregate_sum(new_points[flat_idx], ghost_id, n_ghost, method='scatter', info=None)
     ghost_points = summed / counts[:, None].astype(new_points.dtype)
     return ghost_points
 
@@ -693,7 +731,9 @@ def _compute_new_coarse_points(new_finer_points, fine_graph_key, coarse_graph_ke
     assert mapping.shape == (nDualCells,)
     assert new_finer_points.shape[0] == nDualCells
 
-    summed = jnp.zeros((nCoarseDualCells, 3), dtype=new_finer_points.dtype).at[mapping].add(new_finer_points)
+    # summed = jnp.zeros((nCoarseDualCells, 3), dtype=new_finer_points.dtype).at[mapping].add(new_finer_points)
+    summed = aggregate_sum(new_finer_points, mapping, nCoarseDualCells, method='grouped', info=None)
+    # summed = aggregate_sum(new_finer_points, mapping, nCoarseDualCells, method='scatter', info=None)
     counts = jnp.zeros((nCoarseDualCells,), dtype=jnp.int32).at[mapping].add(1)
 
     return summed / counts[:, None].astype(new_finer_points.dtype)
@@ -702,10 +742,11 @@ def _print_diff(name, new, old):
     error = np.abs(new - old)
     print(f"{name} diff (max, mean, min, std): {error.max()}, {error.mean()}, {error.min()}, {error.std()}")
 
-def compute_face_geometry(foam_mesh:dict, vertices:jax.Array)->tuple[jax.Array, jax.Array, jax.Array]:
+def compute_face_geometry(foam_mesh:dict, vertices:jax.Array, face_ids:np.ndarray=None)->tuple[jax.Array, jax.Array, jax.Array]:
     faces = foam_mesh["faces"]
     face_points = faces["points"]                    # ragged list[list[int]]
-    owner = faces["owner"]
+    if face_ids is not None:
+        face_points = [face_points[fid] for fid in face_ids]
 
     # ===================== PREPARATION =====================
     counts = np.asarray([len(fp) for fp in face_points], dtype=np.int32) # number of vertices per surface face
@@ -737,12 +778,13 @@ def compute_face_geometry(foam_mesh:dict, vertices:jax.Array)->tuple[jax.Array, 
     # 0.5 * sum_i cross(p_i, p_{i+1}) = oriented area vector
     area_vec = 0.5 * jnp.zeros((num_faces, 3)).at[face_id].add(jnp.cross(pi, pj))  # (Fsurf, 3)
 
-    # Face areas
-    areas = jnp.linalg.norm(area_vec, axis=1)  # (Fsurf,)
+    # Regularize inside sqrt so a collapsed or numerically underflowed face
+    # cannot create a 0/0 in the reverse pass.
+    area_eps = jnp.asarray(1e-8, dtype=area_vec.dtype)
+    areas = jnp.sqrt(jnp.sum(area_vec * area_vec, axis=1) + area_eps**2)
 
     # Unit normals from area vectors
-    eps = 1e-8
-    normals = -area_vec / jnp.maximum(areas[:, None], eps)
+    normals = -area_vec / areas[:, None]
 
     # Finally, compute face centroids as the average of their vertices
     face_centers = jnp.zeros((num_faces, 3)).at[face_id].add(pi)
@@ -753,20 +795,42 @@ def compute_face_geometry(foam_mesh:dict, vertices:jax.Array)->tuple[jax.Array, 
     assert face_centers.shape == (num_faces, 3)
     return normals, areas, face_centers
 
-def build_geometry_case(topology:dict, vertices:np.ndarray, faces:bool)->dict:
+def build_geometry_case(topology:dict, vertices:np.ndarray, faces:bool, precomputed_dual_cells_and_surf:np.ndarray=None)->dict:
     new_points = {'foam_mesh': {'cells':{}, 'faces':{}}}
     for key in topology['hierarchy']:
         new_points[key] = {}
     new_vertices = vertices
 
-    # First we need to update the foam mesh: (points and centroids)
-    assert topology['foam_mesh']['points'].shape == vertices.shape, f"Error: topology foam mesh points shape {topology['foam_mesh']['points'].shape} does not match vertices shape {vertices.shape}"    
-    new_centroids = _compute_centroids(new_vertices, topology['foam_mesh']['cells']['points'])
-    assert topology['foam_mesh']['cells']['centroids'].shape == new_centroids.shape, f"Error: computed centroids shape {new_centroids.shape} does not match expected shape {topology['foam_mesh']['cells']['centroids'].shape}"
+    if precomputed_dual_cells_and_surf is None:
+        # First we need to update the foam mesh: (points and centroids)
+        assert topology['foam_mesh']['points'].shape == vertices.shape, f"Error: topology foam mesh points shape {topology['foam_mesh']['points'].shape} does not match vertices shape {vertices.shape}"    
+        new_centroids = _compute_centroids(new_vertices, topology['foam_mesh']['cells']['points'])
+        assert topology['foam_mesh']['cells']['centroids'].shape == new_centroids.shape, f"Error: computed centroids shape {new_centroids.shape} does not match expected shape {topology['foam_mesh']['cells']['centroids'].shape}"
 
-    # Then we need to update the dual mesh: 'dual cells'
-    ghost_points = _compute_new_ghost_points(new_vertices, topology)
-    dual_cells = jnp.vstack([new_centroids, ghost_points]) # shape (num_real_cells + num_ghost_cells, 3)
+        # Then we need to update the dual mesh: 'dual cells'
+        ghost_points = _compute_new_ghost_points(new_vertices, topology)
+        dual_cells = jnp.vstack([new_centroids, ghost_points]) # shape (num_real_cells + num_ghost_cells, 3)
+    else:
+        if faces:
+            raise ValueError("Faces should not be requested when using precomputed dual cells.")
+        
+        packed = precomputed_dual_cells_and_surf
+        n_dual = topology["dual_graph"]["nDualCells"]
+        n_real = topology["dual_graph"]["num_real_cells"]
+        wall_ids = topology["foam_mesh"]['wall_pt_ids']
+        n_wall = len(wall_ids)
+
+        assert packed.shape == (n_dual + n_wall, 3)
+
+        # unpack:
+        dual_cells = packed[:n_dual]
+        wall_points = packed[n_dual:]
+
+        n_real = topology["dual_graph"]["num_real_cells"]
+        new_centroids = dual_cells[:n_real]
+        new_vertices = jnp.asarray(topology["foam_mesh"]["points"])
+        new_vertices = new_vertices.at[wall_ids].set(wall_points)
+
     assert dual_cells.shape == (topology['dual_graph']['nDualCells'], 3), f"Error: dual_cells shape {dual_cells.shape} does not match expected shape {(topology['dual_graph']['nDualCells'], 3)}"
     new_points['dual_graph']['dual_cells'] = dual_cells
 
@@ -782,14 +846,30 @@ def build_geometry_case(topology:dict, vertices:np.ndarray, faces:bool)->dict:
     new_points['foam_mesh']['points'] = new_vertices
     new_points['foam_mesh']['cells']['centroids'] = new_centroids
     
-    # Additional values
+    # Wall-face geometry is always needed by the model and force integration.
+    surface_face_ids = np.flatnonzero(topology['foam_mesh']['faces']['type'] == 1).astype(np.int32)
     if faces:
         normals, face_areas, face_centroids = compute_face_geometry(topology['foam_mesh'], new_vertices)
+        surface_normals = normals[surface_face_ids]
+        surface_areas = face_areas[surface_face_ids]
+        surface_centroids = face_centroids[surface_face_ids]
     else:
         normals, face_areas, face_centroids = None, None, None
+        surface_normals, surface_areas, surface_centroids = compute_face_geometry(
+            topology['foam_mesh'], new_vertices, surface_face_ids
+        )
+
+    num_surface_nodes = int(np.sum(topology['dual_graph']['dual_cell_types'] == 1))
+    assert surface_areas.shape == (num_surface_nodes,)
+    assert surface_normals.shape == (num_surface_nodes, 3)
+    assert surface_centroids.shape == (num_surface_nodes, 3)
+
     new_points['foam_mesh']['faces']['normals'] = normals
     new_points['foam_mesh']['faces']['areas'] = face_areas
     new_points['foam_mesh']['faces']['centroids'] = face_centroids
+    new_points['foam_mesh']['faces']['surface_normals'] = surface_normals
+    new_points['foam_mesh']['faces']['surface_areas'] = surface_areas
+    new_points['foam_mesh']['faces']['surface_centroids'] = surface_centroids
     new_points['foam_mesh']['cells']['volumes'] = None
     return new_points
 
@@ -897,24 +977,17 @@ def get_lowfi_CFD_mesh(path_dir, graph_topology, mesh_load_settings, dual_load_s
     src = np.asarray(lofi_dual_graph["dual_cells"][:lofi_dual_graph["num_real_cells"]], np.float32)
     dst = np.asarray(graph_topology["dual_graph"]["dual_cells"], np.float32)
     _, nn = cKDTree(src).query(dst, k=k)
-    nn, src = jnp.asarray(nn, jnp.int32), jnp.asarray(src)
+    nn = jnp.asarray(nn, jnp.int32)
 
     # Must be jittable wrt graph_x, euler_data, ff
     def data_transfer_function(graph_topology, euler_topology, graph_x, euler_data, ff):
-        # states = 12
-        # print_content(graph_topology)
-        # print("=== euler_topology ===")
-        # print_content(euler_topology)
-        # print("=== graph_x ===")
-        # print_content(graph_x)
-        # print("=== euler_data ===")
-        # print_content(euler_data)
-        # print("=== ff ===")
-        # print_content(ff)
-        # return states
-    
+        # Keep baseline neighbors fixed, but update both meshes' positions for IDW.
+        src_x = _compute_centroids(
+            jnp.asarray(euler_data["vertex_coordinates"]),
+            euler_topology["foam_mesh"]["cells"]["points"],
+        )
         x = graph_x["dual_graph"]["dual_cells"]
-        r2 = jnp.sum((x[:, None, :] - src[nn]) ** 2, axis=-1)
+        r2 = jnp.sum((x[:, None, :] - src_x[nn]) ** 2, axis=-1)
         w = 1.0 / (r2 + 1e-12)
         w = w / jnp.sum(w, axis=1, keepdims=True)
         take = lambda a: jnp.sum(jnp.asarray(a)[nn] * w[..., None], axis=1)
@@ -944,6 +1017,7 @@ def build_geometry_data(
 
     data = []
     build_geometry_case_jit = jax.jit(lambda x: build_geometry_case(topology, x, faces), device=device)
+    build_geometry_case_precomputed_jit = jax.jit(lambda x: build_geometry_case(topology, None, faces, precomputed_dual_cells_and_surf=x), device=device)
     
     # build_panel_case_jit = jax.jit(lambda x,p,ff: build_panel_case(topology, lowfi_topology, x, p, ff), device=device)
     # build_panel_case_jit = lambda x,p,ff: build_panel_case(topology, panel_topology, x, p, ff)
@@ -957,13 +1031,81 @@ def build_geometry_data(
     print(f"* Processing {len(cfd_data)} data configurations...")
     for case in cfd_data:
         flow_condition = case['flow_condition']
-
         # ============================ Graph construction ============================
-        vertices = case['vertex_coordinates']
-        vertices = jnp.array(vertices)
         start = time.time()
-        case_geometry = build_geometry_case_jit(vertices)
+        if 'preloaded_dual_vertices' in case:
+            preloaded_vertices = case['preloaded_dual_vertices']['dual_cells']
+            preloaded_shape = tuple(preloaded_vertices.shape)
+            full_volume_shape = tuple(topology['foam_mesh']['points'].shape)
+            partial_volume_shape = (topology['dual_graph']['nDualCells'] + len(topology['foam_mesh']['wall_pt_ids']),3,)
+
+            if preloaded_shape == full_volume_shape:
+                # Full-volume files contain every warped OpenFOAM mesh point,
+                # so rebuild the dual cells and surface geometry normally.
+                case_geometry = build_geometry_case_jit(jnp.asarray(preloaded_vertices))
+            elif preloaded_shape == partial_volume_shape:
+                # Partial-volume files contain packed dual cells followed by
+                # wall points, matching build_geometry_case's precomputed path.
+                case_geometry = build_geometry_case_precomputed_jit(preloaded_vertices)
+            else:
+                case_id = case.get('case_id', '<unknown>')
+                raise ValueError(
+                    f"Preloaded vertices for case {case_id} have shape "
+                    f"{preloaded_shape}; expected {full_volume_shape} for full "
+                    f"volume deformation or {partial_volume_shape} for partial "
+                    "volume deformation."
+                )
+        else:
+            vertices = case['vertex_coordinates']
+            vertices = jnp.array(vertices)
+            case_geometry = build_geometry_case_jit(vertices)
         jax.block_until_ready(case_geometry)
+
+        # import hashlib
+
+        # x = np.asarray(vertices)
+        # print("VERTICES SHA256:", hashlib.sha256(x.tobytes()).hexdigest())
+        # for key in ['coarse_graph_l1', 'coarse_graph_l2', 'dual_graph']:
+        #     x = np.asarray(case_geometry[key]['dual_cells'])
+
+        #     print(f"\n===== {key} =====")
+        #     print("shape:", x.shape, "dtype:", x.dtype)
+        #     print("mean:", x.mean(axis=0))
+        #     print("std:", x.std(axis=0))
+        #     print("min:", x.min(axis=0))
+        #     print("max:", x.max(axis=0))
+        #     print("sum:", x.sum(axis=0))
+        #     print("first 5:\n", x[:5])
+        #     print("SHA256:", hashlib.sha256(x.tobytes()).hexdigest())
+        # # np.save("/tmp/dual_run1.npy", np.asarray(case_geometry['dual_graph']['dual_cells']))
+        # x1 = np.load("/tmp/dual_run1.npy")
+        # x2 = np.asarray(case_geometry['dual_graph']['dual_cells'])
+
+        # diff = np.abs(x2 - x1)
+
+        # print("DUAL DIFF")
+        # print("max diff:       ", diff.max())
+        # print("mean diff:      ", diff.mean())
+        # print("nonzero values: ", np.count_nonzero(diff))
+        # print("different rows: ", np.count_nonzero(np.any(diff != 0, axis=1)))
+        # print("max relative:", np.max(diff / (np.abs(x1) + 1e-12)))
+        # n_real = topology['dual_graph']['num_real_cells']
+
+        # diff_real = np.abs(x2[:n_real] - x1[:n_real])
+        # diff_ghost = np.abs(x2[n_real:] - x1[n_real:])
+
+        # print("REAL")
+        # print("max:", diff_real.max())
+        # print("mean:", diff_real.mean())
+        # print("nonzero values:", np.count_nonzero(diff_real))
+        # print("different rows:", np.count_nonzero(np.any(diff_real != 0, axis=1)))
+
+        # print("\nGHOST")
+        # print("max:", diff_ghost.max())
+        # print("mean:", diff_ghost.mean())
+        # print("nonzero values:", np.count_nonzero(diff_ghost))
+        # print("different rows:", np.count_nonzero(np.any(diff_ghost != 0, axis=1)))
+        # exit()
 
         # ============================ OLD Panel Method interpolation ==========================
         # if lowfi_topology is not None:
@@ -990,11 +1132,13 @@ def build_geometry_data(
                 'lift': low_fidelity_data['lift'],
                 'drag': low_fidelity_data['drag'],
             }
+            if 'moment' in low_fidelity_data:
+                lofi_info['moment'] = low_fidelity_data['moment']
         else:
             lofi_info = None
 
         if verbose:
-            print(f"  * Case {case['case_id']} geometry (and panel interpolation) built in {time.time() - start:.2f} seconds.")
+            print(f"  * Case {case['case_id']} geometry (and panel interpolation) built in {time.time() - start:.3f} seconds.")
         case_geometry = jax.device_get(case_geometry)
 
         state_data = {
@@ -1013,6 +1157,24 @@ def build_geometry_data(
                 'aircraft_geometry': case['aircraft_geometry'],
             }
         )
+
+    # UNCOMMENT TO PRINT SURFACE AREA STATISTICS FOR NORMALIZATION
+    # training_surface_areas = [
+    #     np.asarray(config['warped_geo']['foam_mesh']['faces']['surface_areas'], dtype=np.float64)
+    #     for config in data
+    #     if config['train']
+    # ]
+    # if training_surface_areas:
+    #     training_surface_areas = np.concatenate(training_surface_areas)
+    #     surface_area_scale = np.median(training_surface_areas)
+    #     transformed_surface_areas = np.log1p(training_surface_areas / surface_area_scale)
+    #     print(
+    #         "* Surface area normalization constants: "
+    #         f"scale={surface_area_scale:.12g}, "
+    #         f"log_mean={transformed_surface_areas.mean():.12g}, "
+    #         f"log_std={transformed_surface_areas.std():.12g}"
+    #     )
+    # exit()
 
     if verbose == 2:
         print('Final case differences:')

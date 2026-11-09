@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aerodml"
-version = "0.1.0"
+version = "0.2.0"
 description = "Multifidelity aerodynamic flow prediction on mesh data using GNNs"
 readme = "README.md"
 requires-python = ">=3.10.0"
@@ -16,6 +16,14 @@ dependencies = [
   "optax",
   "matplotlib",
   "pyvista",
+  "Ofpp @ git+https://github.com/msperryucsd/ofpp.git",
+  "idwarp-jax @ git+https://github.com/LSDOlab/idwarp-jax.git",
+]
+
+[project.optional-dependencies]
+examples = [
+  "pandas",
+  "imageio",
 ]
 
 [tool.setuptools.packages.find]

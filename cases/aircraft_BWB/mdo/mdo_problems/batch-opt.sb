@@ -1,0 +1,32 @@
+#!/bin/bash
+#SBATCH --job-name=bwb-mdo
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gpus=1
+#SBATCH --mem=64G
+#SBATCH --time=01:00:00
+#SBATCH --output=slurm-%j.out
+# Supply --account, --partition, and optional --qos to sbatch for your cluster.
+
+set -e
+# Submit from mdo_problems so Slurm logs and optimization outputs stay here.
+cd "${SLURM_SUBMIT_DIR:-$(dirname "$(realpath "${BASH_SOURCE[0]}")")}"
+if [[ ! -f bwb_mdo.py ]]; then
+    echo "Submit this batch script from the mdo_problems directory." >&2
+    exit 1
+fi
+
+# Initialize conda and required modules before submission; set your environment below.
+# TSCC GPU module setup; adapt module names for other clusters.
+module purge
+module load gpu
+
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate YOUR_ENV_NAME
+
+# Optional model argument: Panel (default), RANS-GNN, or PG-RANS-GNN.
+if [[ $# -eq 0 ]]; then
+    set -- Panel
+fi
+exec python -u bwb_mdo.py "$@"

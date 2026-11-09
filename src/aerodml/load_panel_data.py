@@ -116,137 +116,220 @@ def build_4way_cell_interp(points, tris, adjacency, owner_tris, projected_points
     interp_cell_weights /= interp_cell_weights.sum(axis=1, keepdims=True)
     return interp_cell_ids, interp_cell_weights
 
-def get_panel_mesh(path:str, cfd_mesh_topology:str, panel_load_settings:dict[str])->dict:
-    # load the pickle file called "CONNECTIVITY.pkl" in the directory "dir"
+def build_cell_interp(points, cells_dict, cell_adjacency, owner_cells, projected_points):
+    tris = np.asarray(cells_dict["triangle"], dtype=np.int64)
+    quads = np.asarray(cells_dict["quad"], dtype=np.int64)
+
+    num_tris = tris.shape[0]
+    num_quads = quads.shape[0]
+    num_cells = num_tris + num_quads
+
+    owner_cells = np.asarray(owner_cells, dtype=np.int64)
+    projected_points = np.asarray(projected_points)
+
+    if owner_cells.ndim != 1:
+        raise ValueError(f"owner_cells must be one-dimensional, got {owner_cells.shape}")
+
+    if projected_points.shape != (owner_cells.shape[0], 3):
+        raise ValueError(
+            f"projected_points has shape {projected_points.shape}, "
+            f"but expected ({owner_cells.shape[0]}, 3)"
+        )
+
+    if np.any(owner_cells < 0) or np.any(owner_cells >= num_cells):
+        raise ValueError("owner_cells contains invalid global panel-cell IDs")
+
+    # Centroids use the same global ordering as pressure and velocity:
+    # [all triangle centroids, all quad centroids]
+    tri_centroids = points[tris].mean(axis=1)
+    quad_centroids = points[quads].mean(axis=1)
+    cell_centroids = np.concatenate((tri_centroids, quad_centroids), axis=0)
+
+    assert cell_centroids.shape == (num_cells, 3)
+
+    # Adjacency rows must use the same global cell ordering.
+    adjacency_rows = list(cell_adjacency["triangle"]) + list(cell_adjacency["quad"])
+
+    if len(adjacency_rows) != num_cells:
+        raise ValueError(
+            f"Found {len(adjacency_rows)} adjacency rows, but expected {num_cells}"
+        )
+
+    # For triangle/quad data this will normally be 4, giving a stencil size of 5:
+    # owner + up to 4 neighbors.
+    max_neighbors = max(len(neighbors) for neighbors in adjacency_rows)
+    stencil_size = 1 + max_neighbors
+    num_targets = owner_cells.shape[0]
+
+    # Initialize every slot with the owner cell.
+    #
+    # Padding must contain a valid cell ID because these IDs will later be used
+    # for array indexing. Padding entries receive weight zero.
+    interp_cell_ids = np.repeat(owner_cells[:, None], stencil_size, axis=1)
+
+    # First entry is always the owner and is therefore valid.
+    valid_mask = np.zeros((num_targets, stencil_size), dtype=bool)
+    valid_mask[:, 0] = True
+
+    for target_index, owner_cell in enumerate(owner_cells):
+        neighbors = np.asarray(adjacency_rows[owner_cell], dtype=np.int64).reshape(-1)
+
+        # Remove boundary markers, invalid IDs, the owner itself, and duplicates.
+        neighbors = neighbors[
+            (neighbors >= 0)
+            & (neighbors < num_cells)
+            & (neighbors != owner_cell)
+        ]
+
+        # Preserve the original adjacency order while removing duplicates.
+        if neighbors.size:
+            _, unique_indices = np.unique(neighbors, return_index=True)
+            neighbors = neighbors[np.sort(unique_indices)]
+
+        if neighbors.size > max_neighbors:
+            raise ValueError(
+                f"Cell {owner_cell} has {neighbors.size} valid neighbors, "
+                f"but max_neighbors is {max_neighbors}"
+            )
+
+        num_neighbors = neighbors.size
+
+        interp_cell_ids[target_index, 1:1 + num_neighbors] = neighbors
+        valid_mask[target_index, 1:1 + num_neighbors] = True
+
+    stencil_centroids = cell_centroids[interp_cell_ids]
+
+    dists = np.linalg.norm(
+        stencil_centroids - projected_points[:, None, :],
+        axis=2,
+    )
+
+    # Inverse-distance weights for the owner and real neighbors.
+    # Padded entries receive exactly zero weight.
+    inverse_dists = np.where(
+        valid_mask,
+        1.0 / np.maximum(dists, 1e-12),
+        0.0,
+    )
+
+    weight_sums = inverse_dists.sum(axis=1, keepdims=True)
+
+    if np.any(weight_sums <= 0.0):
+        bad_rows = np.flatnonzero(weight_sums[:, 0] <= 0.0)[:10]
+        raise ValueError(
+            f"Could not construct interpolation weights for rows {bad_rows.tolist()}"
+        )
+
+    interp_cell_weights = inverse_dists / weight_sums
+    return interp_cell_ids, interp_cell_weights
+
+def get_panel_mesh(path: str, cfd_mesh_topology: dict, panel_load_settings: dict) -> dict:
     with open(path, "rb") as f:
         connectivity = pickle.load(f)
 
-    tris = connectivity['triangles']
-    adjacency = connectivity['cell_adjacency']
-    points = connectivity['panel_mesh']
-    num_cells = tris.shape[0]
+    # Extract info
+    cell_info = connectivity["cell_adjacency_data"]
+    points = np.asarray(cell_info[0])
+    cells_dict = cell_info[1]
+    cell_adjacency = cell_info[2]
+    tris = np.asarray(cells_dict["triangle"], dtype=np.int64)
+    quads = np.asarray(cells_dict["quad"], dtype=np.int64)
+
+    num_tris = tris.shape[0]
+    num_quads = quads.shape[0]
+    num_cells = num_tris + num_quads
     num_points = points.shape[0]
 
-    # project these points onto triangular surface mesh
-    volume_points = cfd_mesh_topology['dual_graph']['dual_cells']
-    surface_mask = cfd_mesh_topology['dual_graph']['dual_cell_types'] == 1
-    target_projection_points = volume_points[surface_mask]
+    # Global panel-cell ordering:
+    # [all triangles, all quads]
+
+    # This is the same ordering as pressure and velocity.
+    graph = cfd_mesh_topology["dual_graph"]
+    surface_mask = graph["dual_cell_types"] == 1
+    target_projection_points = graph["dual_cells"][surface_mask]
     num_projection_points = target_projection_points.shape[0]
 
-    # print(tris.shape, adjacency.shape, points.shape, target_projection_points.shape)
-
-    # ================== PROJECT FOR INTERPOLATION ==================
-    # build triangular surface mesh
-    faces = np.hstack([
-        np.full((num_cells, 1), 3, dtype=np.int64),
-        tris.astype(np.int64),
-    ]).ravel()
+    # Build mixed triangle/quad PyVista surface.
+    tri_faces = np.hstack((np.full((num_tris, 1), 3, dtype=np.int64), tris)).ravel()
+    quad_faces = np.hstack((np.full((num_quads, 1), 4, dtype=np.int64), quads)).ravel()
+    faces = np.concatenate((tri_faces, quad_faces))
 
     surf = pv.PolyData(points, faces)
 
-    # What triangle is each target_projection_point closest to?
-    # Also returns the actual projected point on the triangle surface.
+    assert surf.n_cells == num_cells
+    assert surf.n_points == num_points
+
+    # Find the closest panel cell and projected surface location for each CFD surface node.
     start = time.time()
-    surface_cells_to_tris, projected_points = surf.find_closest_cell(
-        target_projection_points,
-        return_closest_point=True,
+
+    surface_cells_to_panels, projected_points = surf.find_closest_cell(
+        target_projection_points, return_closest_point=True
     )
+
     end = time.time()
-    print(f"* Projected {num_projection_points} surface nodes onto panel mesh in {end - start:.2f} seconds")
-    surface_cells_to_tris = np.asarray(surface_cells_to_tris, dtype=np.int64)
+
+    print(
+        f"* Projected {num_projection_points} surface nodes onto panel mesh "
+        f"in {end - start:.2f} seconds"
+    )
+
+    surface_cells_to_panels = np.asarray(surface_cells_to_panels, dtype=np.int64)
     projected_points = np.asarray(projected_points)
 
-    assert surface_cells_to_tris.shape == (num_projection_points,)
+    assert surface_cells_to_panels.shape == (num_projection_points,)
     assert projected_points.shape == (num_projection_points, 3)
 
-    # Also find 4 nearest triangle centers for each target_projection_point, and their distances. This will be used for interpolation.
-    interp_cell_ids, interp_cell_weights = build_4way_cell_interp(
+    # Owner cell + all edge-neighboring cells.
+    # Triangle:
+    #   owner + 3 neighbors + zero weighted cell owner that doesn't contribute
+    # Quad:
+    #   owner + 4 neighbors
+    interp_cell_ids, interp_cell_weights = build_cell_interp(
         points=points,
-        tris=tris,
-        adjacency=adjacency,
-        owner_tris=surface_cells_to_tris,
+        cells_dict=cells_dict,
+        cell_adjacency=cell_adjacency,
+        owner_cells=surface_cells_to_panels,
         projected_points=projected_points,
     )
 
-    # project the target_projection_points onto the source mesh triangles
-    if panel_load_settings['visualize']:
-        # simple scalar per triangle center
-        fake_surface_field = connectivity['pressure_baseline']
+    if panel_load_settings["visualize"]:
+        fake_surface_field = np.asarray(connectivity["pressure_baseline"])
         clim = (fake_surface_field.min(), fake_surface_field.max())
 
-        # build triangular surface mesh
-        faces = np.hstack([
-            np.full((num_cells, 1), 3, dtype=np.int64),
-            tris.astype(np.int64),
-        ]).ravel()
+        surf.cell_data["pressure"] = fake_surface_field
 
-        surf = pv.PolyData(points, faces)
-
-        # color each projection point by its matched triangle
-        proj = pv.PolyData(target_projection_points)
-        # proj['triangle_id'] = fake_surface_field[surface_cells_to_tris]
-        proj['triangle_id']  = np.sum(
-            connectivity['pressure_baseline'][interp_cell_ids] * interp_cell_weights,
+        interpolated_pressure = np.sum(
+            fake_surface_field[interp_cell_ids] * interp_cell_weights,
             axis=1,
         )
-        
 
-        p = pv.Plotter()
-        p.add_mesh(surf, show_edges=False, clim=clim)
-        # p.add_mesh(surf, scalars=fake_surface_field, show_edges=True, clim=clim)
-        p.add_mesh(proj, scalars='triangle_id', point_size=8, render_points_as_spheres=True, clim=clim)
-        p.show()
+        proj = pv.PolyData(target_projection_points)
+        proj["interpolated_pressure"] = interpolated_pressure
 
-    # =========================== 3D INTERPOLATION ===========================
-    graph = cfd_mesh_topology['dual_graph']
-    edges = graph['dual_edges']
-    dual_points = cfd_mesh_topology['dual_graph']['dual_cells']
+        plotter = pv.Plotter(off_screen=True)
+        plotter.add_mesh(surf, scalars="pressure", show_edges=False, clim=clim)
+        plotter.add_mesh(proj, scalars="interpolated_pressure", point_size=8, render_points_as_spheres=True, clim=clim)
 
-    # ======= Known nodes =======
-    # 1: surface
-    # 2: far-field
-    # 3: N sampled points
-    surface_nodes = graph['dual_cell_types'] == 1
-    ff_nodes = graph['dual_cell_types'] == 2
-    sampled_indices = connectivity['mesh_sample_indices'][:1000]
+        from aerodml.visualize_mesh import available_cameras
+        plotter.camera_position = available_cameras['pos_2']['position']
+        plotter.camera.view_angle = available_cameras['pos_2']['view_angle']
+        plotter.camera.clipping_range = available_cameras['pos_2']['clipping_range']
+        plotter.show(screenshot='PANEL_INTERPOLATION.png')
 
-    # print all shapes and dtypes
-    # print(f"surface_nodes: {surface_nodes.shape}, {surface_nodes.dtype}")
-    # print(f"ff_nodes: {ff_nodes.shape}, {ff_nodes.dtype}")
-    # print(f"sampled_indices: {sampled_indices.shape}, {sampled_indices.dtype}")
-    # print(f"edges: {edges.shape}, {edges.dtype}")
-    # print(f"points: {points.shape}")
-
-    # =============== Interpolate ==============
-    # sampled points should not already be known
-    assert not np.any(surface_nodes[sampled_indices])
-    assert not np.any(ff_nodes[sampled_indices])
-
-    surface_indices = np.flatnonzero(surface_nodes)
-    ff_indices = np.flatnonzero(ff_nodes)
-    known_indices = np.concatenate([
-        surface_indices,
-        ff_indices,
-        sampled_indices,
-    ])
-
-    # simple Euclidean IDW from k nearest known nodes
-    k = 4
-    known_points = dual_points[known_indices]
-    tree = cKDTree(known_points)
-    _, nbr_idx = tree.query(dual_points, k=min(k, known_points.shape[0]))
-    
     panel_topology = {
-        'triangles': tris,
-        'adjacency': adjacency,
-        'surface_points': points,
-        'projected_surface_map': surface_cells_to_tris,
-        'sample_indices': sampled_indices,
-        'nbr_idx': nbr_idx,
-        'known_indices': known_indices,
-        "interp_cell_ids": interp_cell_ids,               # (N, 4)
-        "interp_cell_weights": interp_cell_weights,       # (N, 4)
+        "triangles": tris,
+        "quads": quads,
+        "adjacency": cell_adjacency,
+        "surface_points": points,
+        "projected_surface_map": surface_cells_to_panels,
+        "interp_cell_ids": interp_cell_ids,
+        "interp_cell_weights": interp_cell_weights,
+        "num_triangles": num_tris,
+        "num_quads": num_quads,
+        # "edges2cells": edges2cells,
+        # "points2cells": points2cells,
     }
+
     return panel_topology
 
 import jax.numpy as jnp
@@ -297,7 +380,7 @@ def get_lowfi_panel_mesh(path:str, cfd_mesh_topology:str, panel_load_settings:di
 
     return {'mapping_function': data_transfer_function, 'topology': panel_topology}
 
-def load_panel_data(dir:str, split_dir:str):
+def load_panel_data(dir:str, split_dir:str, file_filter: Callable=None):
     # ------------------------------------------------------------
     # Load the selected split JSON.
     # This file tells us which case IDs are valid and train/test.
@@ -325,6 +408,10 @@ def load_panel_data(dir:str, split_dir:str):
         key=lambda name: int(name.replace(".npz", "")) if name.replace(".npz", "").isdigit() else name
     )
 
+    # Filter using only the filename, before loading any .npz data.
+    if file_filter is not None:
+        files = [file for file in files if file_filter(file)]
+
     data = []
     start = time.time()
     num_total_cases = len(files)
@@ -343,9 +430,6 @@ def load_panel_data(dir:str, split_dir:str):
         # Load the .npz exactly like before.
         # --------------------------------------------------------
         panel_data = np.load(file_path)
-        sample_points = panel_data['sample_points'][:1000]
-        sample_velocity = panel_data['sample_velocity'][:1000]
-        sample_pressure = panel_data['sample_pressure'][:1000]
 
         case_id = file.replace(".npz", "")
         # print_content(panel_data)
@@ -362,12 +446,24 @@ def load_panel_data(dir:str, split_dir:str):
             'panel_mesh': panel_data['panel_mesh'],
             'pressure': panel_data['pressure'],
             'velocity': panel_data['velocity'],
-            'sample_points': sample_points,
-            'sample_velocity': sample_velocity,
-            'sample_pressure': sample_pressure,
             'lift': panel_data['L']/2.0, # divide by 2 because symmetry
             'drag': panel_data['Di']/2.0, # divide by 2 because symmetry
+            'moment': panel_data['M']/2.0, # divide by 2 because symmetry
         }
+
+        # print('pressure', case['pressure'].shape)
+        # print('velocity', case['velocity'].shape)
+        # # print('velocity', case['Cp'].shape)
+        # exit()
+        if 'sample_points' in panel_data:
+            sample_points = panel_data['sample_points'][:1000]
+            sample_velocity = panel_data['sample_velocity'][:1000]
+            sample_pressure = panel_data['sample_pressure'][:1000]
+
+            case['sample_points'] = sample_points
+            case['sample_velocity'] = sample_velocity
+            case['sample_pressure'] = sample_pressure
+
         panel_cases.append(case)
     return panel_cases
 
@@ -384,104 +480,3 @@ def load_lowfi_panel_data(cfd_data:list[dict], dir:str, split_dir:str):
         case['low_fidelity_data'] = panel_case_lookup[case_id]
 
 import jax
-
-if __name__ == "__main__":
-    from run import get_mesh, load_cfd_data, build_geometry_data
-    # High-level options
-    device = jax.devices("gpu")[0]
-    # new_cfd_data = True
-    new_cfd_data = False
-
-    # ============= Pre-processing ==============:
-    # device = jax.devices()[0]
-    mesh_load_settings =   {'verbose': False, 'run_checks': True, 'visualize': False}
-    dual_load_settings =   {'verbose': False, 'run_checks': True, 'visualize': False}
-    coarse_load_settings = {'verbose': False, 'run_checks': True, 'visualize': False}
-    panel_load_settings =  {'verbose': False, 'run_checks': True, 'visualize': False}
-    panel_data_settings =  {'verbose': False, 'run_checks': True, 'visualize': False}
-
-    # Flow conditions (SI units):
-    from utils import rho_physical
-    R = 287.05
-    T_ref = 228.714
-    nuTilda_ref = 4.5e-5
-    p_ref = 30089.6
-    v_ref = 227.38
-    rho_ref = rho_physical(p_ref, T_ref, R)
-    constants = {
-        'T': {      'mean': np.float64(232),                'std': 3*np.float64(11.0),             'ref': T_ref,},
-        'nuTilda': {'mean': np.float64(0.00559),            'std': 3*np.float64(0.0179),           'ref': nuTilda_ref,},
-        'p': {      'mean': np.float64(3.05e+04),           'std': 3*np.float64(3.86e+03),         'ref': p_ref,},
-        'v': {      'mean': np.array([202.8, 14.2, -8.01]), 'std': 3*np.array([48.15, 32.3, 44.6]),'ref': v_ref,},
-        'rho': {                                                                                   'ref': rho_ref,},
-        'R': R, 'gamma': 1.4,
-        'device': device,
-    }
-
-    # ============= Main Setup and Preprocessing ==============:
-    geometry_topology = get_mesh('mesh_data', mesh_load_settings=mesh_load_settings, dual_load_settings=dual_load_settings, coarse_load_settings=coarse_load_settings)
-    if not new_cfd_data:
-        panel_topology = get_panel_mesh('panel_data', geometry_topology, panel_load_settings)
-    else:
-        panel_topology = None
-
-    # case_dir = '639k_adiabatic'
-    case_dir = 'camber_140'
-    cfd_data = load_cfd_data(dir = f'cfd_data/{case_dir}', num_cases = None)
-    if not new_cfd_data:
-        load_panel_data(cfd_data, dir = f'panel_data/{case_dir}')
-    
-    from visualize_mesh import visualize_raw_panel_data
-    for cfd_case in cfd_data:
-        if cfd_case['case_id'] == '0':
-            print(cfd_case['panel']['pressure'].shape)
-            visualize_raw_panel_data(panel_topology, cfd_case['panel'], 'p', screenshot_path = f"plots/panel_projection_debug_{case_dir}.png")
-            # visualize_raw_panel_data(panel_topology, cfd_case['panel'], 'p', screenshot_path = None)
-    exit()
-    train_data, test_data = build_geometry_data(
-        geometry_topology, cfd_data, panel_topology,
-        faces = False, verbose=0, visualize=False, device=device
-    )
-    
-    # =============================== Configurations ===============================
-    # Uncomment this line to generate the PANEL_CONFIG.pkl file, which contains the sampled panel points for each case
-    # write_panel_generation_configs(train_data + test_data)
-    # exit()
-
-    # =============================== Compare panel method results to CFD results ===============================
-    topology = train_data[0]['topology']
-    # Fake eval which just reads the panel method data for the sampled points and returns it as the "predicted" field values for those points. This is just to test the visualization pipeline.
-    def panel_eval(params, freestream_config, pts):
-        is_interior = topology['dual_graph']['dual_cell_types'] == 0
-        v = pts['panel']['v'][is_interior]
-        T = pts['panel']['T'][is_interior]
-        p = pts['panel']['p'][is_interior]
-        nuTilda = pts['panel']['nuTilda'][is_interior]
-
-        v_panel = stacked_normalize(v, constants['v']['mean'], constants['v']['std'])
-        T_panel = stacked_normalize(T, constants['T']['mean'], constants['T']['std'])
-        p_panel = stacked_normalize(p, constants['p']['mean'], constants['p']['std'])
-        nuTilda_panel = stacked_normalize(nuTilda, constants['nuTilda']['mean'], constants['nuTilda']['std'])
-        return v_panel, T_panel, p_panel, nuTilda_panel
-    
-    vid_data = train_data + test_data
-    # vid_data = sorted(vid_data, key=lambda x: int(x['case_id']))
-
-    images = []
-    from visualize_mesh import build_pyvista_mesh_topology, visualize_raw_panel_data
-    from postprocessing_viz import visualize_surface_post
-    pv_mesh = build_pyvista_mesh_topology(topology['foam_mesh'])
-    # state, camera = 'v', 'TE'
-    # state, camera, plane = 'T', 'TE_underside', 0.5
-    # state, camera, plane = 'T', 'TE', 0.5
-    state, camera, plane = 'p', 'pos_2', 0.5
-    # state, camera, plane = 'p', 'pos_2', 10.5
-    # state, camera, plane = 'v', 'pos_2', 10.5
-    
-    # If interactive or not
-    video = False
-    for config in vid_data:
-        print(f"Visualizing case {config['case_id']}...")
-        title = f"Case {config['case_id']} (train={config['train']})"
-        image = visualize_surface_post(panel_eval, None, config, constants, title = title, state=state, window_size=(993, 960), return_image=video, enable_picking=False, pyvista_mesh_topology=pv_mesh, camera = camera, y_plane = plane, print_l2=True)
-        images.append(image)

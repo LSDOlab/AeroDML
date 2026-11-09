@@ -1,5 +1,14 @@
+# import os
+# os.environ.setdefault("JAX_PLATFORMS", "cpu")
 from bwb_cfd import build_cfd_func
 from data_config_builder import get_dataset_configurations
+import pickle
+from pathlib import Path
+import numpy as np
+import time
+
+from mpi4py import MPI
+comm           = MPI.COMM_WORLD
 
 if __name__ == '__main__':
     # ================= 639k mesh: region Dafoam options =================
@@ -9,7 +18,14 @@ if __name__ == '__main__':
         'wall_wing_upper', 'wall_transition_upper','wall_wing_cap',
     ]
     farfield_list = ['inout',]
+    # x_surf_hash_str = 'a63d3d5d35e5809c' # read and choose hash from mesh_dir
+    # x_surf_hash_str = None
+    x_surf_hash_str = 'NEWHASH' # read and choose hash from mesh_dir
+    # x_surf_hash_str = None # read and choose hash from mesh_dir
 
+    # ================= 3M mesh: region Dafoam options =================
+    # wall_list = ['wall',]
+    # farfield_list = ['farfield',]
 
     # Initial/reference values for DAFoam (best to use base conditions)
     # These correspond to M=0.75 @ 30k feet
@@ -20,6 +36,7 @@ if __name__ == '__main__':
     nuTilda0  = 4.5e-5
     CL_target = 0.5
     aoa0      = 0
+    pitch0    = 0
     A0        = 518           # Projected area of entire BWB. Used for normalizing CD and CL
     rho0      = p0 / T0 / 287 # used for normalizing CD and CL
 
@@ -30,6 +47,7 @@ if __name__ == '__main__':
         'nuTilda0': nuTilda0,
         'CL_target': CL_target,
         'aoa0': aoa0,
+        'pitch0': pitch0,
         'A0': A0,
         'rho0': rho0,
     }
@@ -43,6 +61,11 @@ if __name__ == '__main__':
         # "primalMinResTol": 1.0e-8,
         "primalMinResTol": 5e-9,
         "primalMinResTolDiff": 1e2,
+        # "primalFuncStdTol": {
+        #     "tol": 1e-4,
+        #     "funcName": "drag",
+        #     "nSteps": 100,
+        # },
 
         # BCs etc
         "primalBC": {
@@ -126,25 +149,35 @@ if __name__ == '__main__':
     from pathlib import Path
 
     data_dir = sys.argv[1]          # e.g. data/sampling_200
-    case_id  = sys.argv[2]          # either an integer index or an exact key
+    case_id  = sys.argv[2]          # exact case key (including numeric keys)
     mesh = sys.argv[3]  
 
     cfd_runner_dict = build_cfd_func(
         mesh,
         da_options,
         operating_reference,
-        save_primal_time = 9999 if str(case_id) == "0" else None
+        save_primal_time = 9999 if str(case_id) == "0" else None,
+        x_surf_hash_str = x_surf_hash_str,
     )
 
     dataset_configurations = get_dataset_configurations(data_dir)
+    
+    # Run the CFD
+    matches = [d for d in dataset_configurations if str(d['key']) == case_id]
+    if len(matches) != 1:
+        raise ValueError(f"Could not find exactly one case with key={case_id!r}")
+    dataset_input = matches[0]
 
-    if case_id.isdigit():
-        dataset_input = dataset_configurations[int(case_id)]
+    surf_pts = None
+    # look for the resolved case key in data_dir/surf_pts
+    # if it exists, load it as surf_pts
+    surf_pts_path = Path(data_dir) / "surf_pts" / f"{dataset_input['key']}.npy"
+
+    if surf_pts_path.is_file():
+        print(f"Loading surface points from: {surf_pts_path}", flush=True)
+        surf_pts = np.load(surf_pts_path)
     else:
-        matches = [d for d in dataset_configurations if str(d['key']) == case_id]
-        if len(matches) != 1:
-            raise ValueError(f"Could not find exactly one case with key={case_id!r}")
-        dataset_input = matches[0]
+        print(f"No surface points found at: {surf_pts_path}", flush=True)
 
     cfd_writer = cfd_runner_dict["model"]
 
@@ -161,7 +194,8 @@ if __name__ == '__main__':
         name = dataset_input['key'],
         configuration = dataset_input['geometry_configuration'],
         flow_condition = dataset_input['flow_conditions'],
-        dir = output_dir
+        dir = output_dir,
+        surface_pts = surf_pts,
     )
 
     # sim = cfd_runner_dict["sim"]

@@ -174,7 +174,7 @@ def flux_residual(face_flux, foam_mesh, graph_points):
     cell_flux = cell_flux.at[L_cell[L_internal]].add(flux_int[L_internal])
     cell_flux = cell_flux.at[R_cell[R_internal]].add(-flux_int[R_internal])
 
-    # TODO: face-area weighted
+    # face-area weighted? Maybe later?
     # cell_surface_area = jnp.zeros_like(cell_flux)
     # cell_surface_area = cell_surface_area.at[L_cell].add(graph_points['foam_mesh']['faces']['areas'])
     # cell_surface_area = cell_surface_area.at[R_cell].add(graph_points['foam_mesh']['faces']['areas'])
@@ -278,7 +278,7 @@ def build_residual_function(model:Callable, return_full_residuals:bool=False)->C
             res_T_w = (res_T**2.0)
             res_p_w = weights*(res_p**2.0)
             res_nuTilda_w = res_nuTilda**2.0
-            data_loss = m(res_vx_w) + m(res_vy_w) + m(res_vz_w) + m(res_T_w) + m(res_p_w) + m(res_nuTilda_w)
+            data_loss = m(res_vx_w) + m(res_vy_w) + m(res_vz_w) + m(res_p_w) + m(res_T_w) # + m(res_nuTilda_w)
         else:
             res_vx = res_vy = res_vz = res_T = res_p = res_nuTilda = jnp.zeros_like(T_pred)
             data_loss = 0.0
@@ -311,6 +311,13 @@ def build_residual_function(model:Callable, return_full_residuals:bool=False)->C
 
         forces_data = compute_forces(p_data_raw, v_data_raw, nuTilda_data_raw, T_data_raw, graph_points, geometry)
         L_d, D_d = integrate_forces(forces_data)
+
+        # Optional constraint loss for lift and drag
+        # L_error = (L_r - L_d) / 200_000
+        # D_error = (D_r - D_d) / 100_000
+        # constraint_loss = L_error**2.0 + D_error**2.0
+        # weighted_constraint_loss = 0.002 * constraint_loss
+        # loss = loss + weighted_constraint_loss
         
         residuals = {
             # Data-based residuals
@@ -326,34 +333,14 @@ def build_residual_function(model:Callable, return_full_residuals:bool=False)->C
         return loss, residuals 
     return residual
 
-# def compute_latest_metric(training_stats, eps=1e-8):
-#     keys = ("aux_history_tr", "aux_history_te", "aux_history_te_2")
-#     per_case_metrics = []
-#     for key in keys:
-#         if key not in training_stats or len(training_stats[key]) == 0:
-#             continue
-
-#         s = training_stats[key][-1]
-
-#         # Relative squared errors so lift/drag scales don't dominate unfairly
-#         drag_err = ((s["D_pred"] - s["D_data"]) / (abs(s["D_data"]) + eps)) ** 2
-#         lift_err = ((s["L_pred"] - s["L_data"]) / (abs(s["L_data"]) + eps)) ** 2
-
-#         # loss is already an MSE-like quantity, so keep it as-is
-#         loss_term = float(s.get("loss", 0.0))
-
-#         case_metric = (drag_err + lift_err + loss_term) / 3.0
-#         per_case_metrics.append(case_metric)
-#     if not per_case_metrics:
-#         return float("inf")
-#     return float(sum(per_case_metrics) / len(per_case_metrics))
-
 
 def compute_latest_metric(training_stats, eps=1e-8):
-    keys = ("aux_history_tr", "aux_history_te", "aux_history_te_2")
+    keys = tuple(k for k in training_stats if k.startswith('aux_history_'))
+    if len(keys) == 0:
+        raise ValueError("No auxiliary history keys found in training_stats")
 
-    force_weight = 0.05
-    worst_case_weight = 0.10
+    force_weight = 0.04
+    worst_case_weight = 0.08
 
     per_case_metrics = []
 
@@ -372,6 +359,7 @@ def compute_latest_metric(training_stats, eps=1e-8):
         # This avoids exploding when L_data or D_data is small.
         force_scale = max(
             float((s["L_data"]**2 + s["D_data"]**2) ** 0.5),
+            float((250_000**2 + 100_000**2) ** 0.5),
             eps,
         )
 
@@ -400,6 +388,7 @@ def train_model(
         constants:dict,
         solver_settings:dict,
         param_info:ParameterInfo,
+        validation_config_idxs:list,
     )->dict:
     import optax
 
@@ -448,10 +437,26 @@ def train_model(
     next_print = 0
     best_save_metric = np.inf
 
-    training_stats = {
-        'iter_history': [], 'aux_history_tr': [], 'aux_history_te':[], 'aux_history_te_2':[],
-        'case_tr':[], 'case_te':[], 'case_te_2':[], 'save_metric':[]
-    } # for saving
+    # ========= LOGGING Preprocessing ========= 
+    TRAIN_CONFIG_IDXS = [2, 5,]
+    VALIDATION_CONFIG_IDXS = validation_config_idxs
+    evaluation_cases = []
+
+    for case_number, config_idx in enumerate(TRAIN_CONFIG_IDXS, start=1):
+        suffix = '' if case_number == 1 else f'_{case_number}'
+        evaluation_cases.append({'split': 'train', 'configs': training_configs, 'config_idx': config_idx, 'aux_key': f'aux_history_tr{suffix}', 'case_key': f'case_tr{suffix}',})
+
+    for case_number, config_idx in enumerate(VALIDATION_CONFIG_IDXS, start=1):
+        suffix = '' if case_number == 1 else f'_{case_number}'
+        evaluation_cases.append({'split': 'validation', 'configs': test_configs, 'config_idx': config_idx, 'aux_key': f'aux_history_te{suffix}', 'case_key': f'case_te{suffix}'})
+
+    training_stats = {'iter_history': [], 'save_metric': []}
+
+    for evaluation_case in evaluation_cases:
+        training_stats[evaluation_case['aux_key']] = []
+        training_stats[evaluation_case['case_key']] = [] # for saving
+    # ========= LOGGING Preprocessing ========= 
+
     reset_aux_data(solver_settings['save'])
     tic = current_time = time.time()
     while i < solver_settings['max_iter']:
@@ -462,7 +467,7 @@ def train_model(
                     shuffled_training_box = rng.permutation(num_training_configs).tolist()
                 training_sample = shuffled_training_box.pop()
                 batch_indices.append(training_sample)
-                # There is a very small chance of duplicates within a batch
+                # I guess there is a very small chance of duplicates within a batch
 
             df_dx_accum = None
             for config_idx in batch_indices:
@@ -501,62 +506,81 @@ def train_model(
             next_print += solver_settings['print_stride']
 
             iter_time = time.time() - current_time
-
-            # save training stats
-            config_idx = 2
-            data_train = jax.device_put(training_configs[config_idx]['data'], device=constants['device'])
-            graph_train = jax.device_put(training_configs[config_idx]['warped_geo'], device=constants['device'])
-            flow_train = jax.device_put(training_configs[config_idx]['flow_condition'], device=constants['device'])
-            training_loss, training_residuals = res_jit(params, data_train, flow_train, graph_train)
-            aux_data = training_residuals
-            aux_data = {k: float(jax.device_get(v)) for k, v in training_residuals.items()}
-            aux_data['loss'] = float(jax.device_get(training_loss))
             training_stats['iter_history'].append(i)
-            training_stats['aux_history_tr'].append(aux_data)
-            training_stats['case_tr'].append(training_configs[config_idx]['case_id'])
 
-            # save validation stats 1
-            VALIDATION_CONFIG_IDX = 2
-            test_config = test_configs[VALIDATION_CONFIG_IDX]
-            data_test = jax.device_put(test_config['data'], device=constants['device'])
-            graph_test = jax.device_put(test_config['warped_geo'], device=constants['device'])
-            flow_test = jax.device_put(test_config['flow_condition'], device=constants['device'])
-            # flow_test['v_inf'] = jnp.array([197.04, 0.0, 0.0]) # hardcoded as mach 0.65 for now, but can be randomized later
-            test_loss, test_residuals = res_jit(params, data_test, flow_test, graph_test)
-            aux_data = test_residuals
-            aux_data = {k: float(jax.device_get(v)) for k, v in test_residuals.items()}
-            aux_data['loss'] = float(jax.device_get(test_loss))
-            training_stats['aux_history_te'].append(aux_data)
-            training_stats['case_te'].append(test_config['case_id'])
+            for evaluation_case in evaluation_cases:
+                config = evaluation_case['configs'][evaluation_case['config_idx']]
 
-            # save test stats
-            VALIDATION_CONFIG_IDX = -2
-            test_config = test_configs[VALIDATION_CONFIG_IDX]
-            data_test = jax.device_put(test_config['data'], device=constants['device'])
-            graph_test = jax.device_put(test_config['warped_geo'], device=constants['device'])
-            flow_test = jax.device_put(test_config['flow_condition'], device=constants['device'])
-            # flow_test['v_inf'] = jnp.array([197.04, 0.0, 0.0]) # hardcoded as mach 0.65 for now, but can be randomized later
-            test_loss, test_residuals = res_jit(params, data_test, flow_test, graph_test)
-            aux_data = test_residuals
-            aux_data = {k: float(jax.device_get(v)) for k, v in test_residuals.items()}
-            aux_data['loss'] = float(jax.device_get(test_loss))
-            training_stats['aux_history_te_2'].append(aux_data)
-            training_stats['case_te_2'].append(test_config['case_id'])
+                data_eval = jax.device_put(config['data'], device=constants['device'])
+                graph_eval = jax.device_put(config['warped_geo'], device=constants['device'])
+                flow_eval = jax.device_put(config['flow_condition'], device=constants['device'])
+
+                eval_loss, eval_residuals = res_jit(params, data_eval, flow_eval, graph_eval)
+
+                aux_data = {k: float(jax.device_get(v)) for k, v in eval_residuals.items()}
+                aux_data['loss'] = float(jax.device_get(eval_loss))
+
+                training_stats[evaluation_case['aux_key']].append(aux_data)
+                training_stats[evaluation_case['case_key']].append(config['case_id'])
+
+                if evaluation_case['split'] == 'train':
+                    training_loss, training_residuals = eval_loss, eval_residuals
+                else:
+                    test_loss, test_residuals = eval_loss, eval_residuals
+
+            # # save training stats
+            # config_idx = 2
+            # data_train = jax.device_put(training_configs[config_idx]['data'], device=constants['device'])
+            # graph_train = jax.device_put(training_configs[config_idx]['warped_geo'], device=constants['device'])
+            # flow_train = jax.device_put(training_configs[config_idx]['flow_condition'], device=constants['device'])
+            # training_loss, training_residuals = res_jit(params, data_train, flow_train, graph_train)
+            # aux_data = training_residuals
+            # aux_data = {k: float(jax.device_get(v)) for k, v in training_residuals.items()}
+            # aux_data['loss'] = float(jax.device_get(training_loss))
+            # training_stats['aux_history_tr'].append(aux_data)
+            # training_stats['case_tr'].append(training_configs[config_idx]['case_id'])
+
+            # # save validation stats 1
+            # VALIDATION_CONFIG_IDX = 2
+            # test_config = test_configs[VALIDATION_CONFIG_IDX]
+            # data_test = jax.device_put(test_config['data'], device=constants['device'])
+            # graph_test = jax.device_put(test_config['warped_geo'], device=constants['device'])
+            # flow_test = jax.device_put(test_config['flow_condition'], device=constants['device'])
+            # # flow_test['v_inf'] = jnp.array([197.04, 0.0, 0.0]) # hardcoded as mach 0.65 for now, but can be randomized later
+            # test_loss, test_residuals = res_jit(params, data_test, flow_test, graph_test)
+            # aux_data = test_residuals
+            # aux_data = {k: float(jax.device_get(v)) for k, v in test_residuals.items()}
+            # aux_data['loss'] = float(jax.device_get(test_loss))
+            # training_stats['aux_history_te'].append(aux_data)
+            # training_stats['case_te'].append(test_config['case_id'])
+
+            # # save test stats
+            # VALIDATION_CONFIG_IDX = -2
+            # test_config = test_configs[VALIDATION_CONFIG_IDX]
+            # data_test = jax.device_put(test_config['data'], device=constants['device'])
+            # graph_test = jax.device_put(test_config['warped_geo'], device=constants['device'])
+            # flow_test = jax.device_put(test_config['flow_condition'], device=constants['device'])
+            # # flow_test['v_inf'] = jnp.array([197.04, 0.0, 0.0]) # hardcoded as mach 0.65 for now, but can be randomized later
+            # test_loss, test_residuals = res_jit(params, data_test, flow_test, graph_test)
+            # aux_data = test_residuals
+            # aux_data = {k: float(jax.device_get(v)) for k, v in test_residuals.items()}
+            # aux_data['loss'] = float(jax.device_get(test_loss))
+            # training_stats['aux_history_te_2'].append(aux_data)
+            # training_stats['case_te_2'].append(test_config['case_id'])
 
             # Just save every iteration
             param_info.save(params, solver_settings['save'] + '_TEMP')
-            save_metric = compute_latest_metric(
-                training_stats
-            )
+            save_metric = compute_latest_metric(training_stats)
             training_stats['save_metric'].append(save_metric)
             if save_metric < best_save_metric:
                 param_info.save(params, solver_settings['save'] + '_TEMP_BEST')
                 best_save_metric = save_metric
 
-            save_aux_data(training_stats, dir=f'training_stats', suffix=save_name)
+            save_aux_data(training_stats, dir='training_stats', suffix=save_name)
+
             loss_str = f"Iter {i}:\tTrLoss={training_loss:.3e}, TeLoss={test_loss:.3e} , SaveMetric={save_metric:.3e} ,"
             res_str = f"res_vx={training_residuals['res_vx']:.3e}, res_T={training_residuals['res_T']:.3e}, res_p={training_residuals['res_p']:.3e}, res_nuTilda={training_residuals['res_nuTilda']:.3e}, Iter={iter_time:.2f} seconds ,"
-            forces_str = f"L_pred={training_residuals['L_pred']:.2e}, L_data={training_residuals['L_data']:.2e}, D_pred={training_residuals['D_pred']:.2e},D_data={training_residuals['D_data']:.2e}"
+            forces_str = f"L_pred={training_residuals['L_pred']:.2e}, L_data={training_residuals['L_data']:.2e}, D_pred={training_residuals['D_pred']:.2e}, D_data={training_residuals['D_data']:.2e}"
             print(loss_str, res_str, forces_str)
 
             current_time = time.time()

@@ -3,7 +3,6 @@ import numpy as np
 import csdl_alpha as csdl
 from petsc4py import PETSc
 import os
-from mpi4py import MPI
 
 
 
@@ -139,6 +138,7 @@ class DAFoamSolver(csdl.experimental.CustomImplicitOperation):
         print(meshOK)
 
         # Run primal 
+        # comment out later
         if 1:
             # dafoam_instance.solver.setTime(0.0, 0)
             dafoam_instance()
@@ -213,6 +213,7 @@ class DAFoamSolver(csdl.experimental.CustomImplicitOperation):
 
         local_exists = os.path.isdir(local_time_directory)
 
+        from mpi4py import MPI
         any_exists = comm.allreduce(local_exists, op=MPI.LOR)
         all_exist = comm.allreduce(local_exists, op=MPI.LAND)
 
@@ -275,6 +276,16 @@ class DAFoamSolver(csdl.experimental.CustomImplicitOperation):
             os.chdir(case_directory)
 
             solution_index = int(round(time_value * 1.0e4))
+            destination = f"{solution_index / 1.0e4:g}"
+            if dafoam_instance.parallel:
+                destination = os.path.join(f"processor{comm.rank}", destination)
+            # All ranks must skip together, including for a partial checkpoint.
+            from mpi4py import MPI
+            if comm.allreduce(os.path.isdir(destination), op=MPI.LOR):
+                if dafoam_instance.rank == 0:
+                    print(f"Checkpoint time {time_name} already exists on at least one rank; "
+                          "skipping checkpoint save.", flush=True)
+                return
             _, renamed = dafoam_instance.renameSolution(solution_index)
 
             if not renamed:
@@ -516,6 +527,7 @@ class DAFoamSolver(csdl.experimental.CustomImplicitOperation):
         # read the rTol and aTol from DAOption
         rTol0 = self.dafoam_instance.getOption("adjEqnOption")["gmresRelTol"]
         aTol0 = self.dafoam_instance.getOption("adjEqnOption")["gmresAbsTol"]
+        # calculate the new absolute tolerance that gives you rTol residual drop
         aTolNew = rNorm * rTol0
         # if aTolNew is smaller than aTol0, assign aTol0 to aTolNew
         if aTolNew < aTol0:
@@ -672,68 +684,6 @@ class DAFoamFunctions(csdl.CustomExplicitOperation):
 
 
 
-# region COMPUTE_DAFOAM_INPUT_VARIABLES
-def compute_dafoam_input_variables(dafoam_instance, ambient_conditions_group:csdl.VariableGroup, flight_conditions_group:csdl.VariableGroup, aerodynamic_volume_coordinates:csdl.Variable):
-    # Currently expect the ambient_conditions_group to, at minimum, contain the following variables:
-    # T_K   (Temperature [K])
-    # P_Pa  (Pressure [Pa])
-    # a_m_s (Speed of sound [m/s])
-
-    # Currently expect the flight_conditions_group to, at minimum, contain the following variables:
-    # airspeed_m_s         (airspeed [m/s])
-    # angle_of_attack_deg  (Angle of attack [deg])
-    # OR
-    # mach_number          (Mach number)
-    # angle_of_attack_deg  (Angle of attack [deg])
-    
-    # Initialize dafoam variable group
-    dafoam_input_variables_group = csdl.VariableGroup()
-
-    # Read inputInfo listed in daOptions (these should be set by user)
-    dafoam_input_dict = dafoam_instance.getOption("inputInfo")
-
-    for input_name in dafoam_input_dict.keys():
-        input_type = dafoam_input_dict[input_name]["type"]
-
-        # If the type is volCoord, we get the coordinates and assign it to the CSDL variable group
-        if input_type == "volCoord":
-            # TODO: Logic for checking dimensions
-            setattr(dafoam_input_variables_group, input_name, aerodynamic_volume_coordinates)
-
-        # If the type is patchVelocity, we get the velocity and angle of attack and assign it to a CSDL variable
-        elif input_type == "patchVelocity":
-            # Compute the airspeed if not in the flight conditions group, and add to it
-            if not hasattr(flight_conditions_group, "airspeed_m_s"):
-                flight_conditions_group.airspeed_m_s = flight_conditions_group.mach_number*ambient_conditions_group.a_m_s
-
-            # Create the patchVelocity input
-            patchVelocity = csdl.concatenate((flight_conditions_group.airspeed_m_s, flight_conditions_group.angle_of_attack_deg))
-            setattr(dafoam_input_variables_group, input_name, patchVelocity)
-        
-        # If the type is a patchVar, we assign the appropriate value to the CSDL variable
-        elif input_type == "patchVar":
-            input_variable_name = dafoam_input_dict[input_name]["varName"]
-
-            # Pressure case
-            if input_variable_name == "p":
-                setattr(dafoam_input_variables_group, input_name, ambient_conditions_group.P_Pa)
-            
-            # Temperature case
-            elif input_variable_name == "T":
-                setattr(dafoam_input_variables_group, input_name, ambient_conditions_group.T_K)
-
-            # Not implemented case
-            else:
-                raise NotImplementedError(f'unable to create csdl variable for "{input_name}" (patchVar for "{input_variable_name}" interpretation not implemented)')
-
-        # Not implemented case
-        else:
-            raise NotImplementedError(f'unable to create csdl variable for "{input_name}" (type "{input_type}" interpretation not implemented)')
-
-    return dafoam_input_variables_group
-
-
-
 # region HAS_GLOBAL_NAN_OR_INF
 def has_global_nan_or_inf(arr, comm):
     """
@@ -751,6 +701,7 @@ def has_global_nan_or_inf(arr, comm):
     bool
         True if any NaN or Inf exists in the *global* array, else False.
     """
+    from mpi4py import MPI
     local_has_nan_or_inf  = np.any(np.isnan(arr) | np.isinf(arr))
     global_has_nan_or_inf = comm.allreduce(local_has_nan_or_inf, op=MPI.LOR)
     return global_has_nan_or_inf

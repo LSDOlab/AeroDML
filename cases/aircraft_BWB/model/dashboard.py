@@ -1,3 +1,12 @@
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+PAPER_HISTORIES = {
+    "rans": ("RANS-GNN", "training_aux_info_RANS_GNN_trained_paper"),
+    "panel": ("PG-RANS-GNN", "training_aux_info_PG_RANS_GNN_trained_paper"),
+    "euler": ("EG-RANS-GNN", "training_aux_info_EG_RANS_GNN_trained_paper"),
+}
+
 import os
 import pandas as pd
 
@@ -33,23 +42,34 @@ def connect(*names, folder="training_stats"):
         df["iter_history"] = df["iter_history"] - df["iter_history"].iloc[0] + offset
 
         dfs.append(df)
+
         offset = int(df["iter_history"].iloc[-1])
     return pd.concat(dfs, ignore_index=True)
 
 def pretty_print_recent(df, history_cols, history_labels, n=3):
     def build_group(metric_kind):
         cols = []
+
         for col in history_cols:
             sample = df[col].iloc[0]
+            label = history_labels[col]
+            is_first = len(cols) == 0
 
             if metric_kind == "loss" and "loss" in sample:
-                cols.append((f"{history_labels[col]} loss", col, "loss"))
+                header = f"{label} loss" if is_first else label
+                cols.append((header, col, "loss"))
+
             elif metric_kind == "L_err" and all(k in sample for k in ("L_pred", "L_data")):
-                cols.append((f"{history_labels[col]} L err %", col, "L_err"))
+                header = f"{label} L err %" if is_first else label
+                cols.append((header, col, "L_err"))
+
             elif metric_kind == "D_err" and all(k in sample for k in ("D_pred", "D_data")):
-                cols.append((f"{history_labels[col]} D err %", col, "D_err"))
+                header = f"{label} D err %" if is_first else label
+                cols.append((header, col, "D_err"))
 
         return cols
+    def fmt_loss(value):
+        return f"{float(value):.4g}"
 
     loss_cols = build_group("loss")
     lift_cols = build_group("L_err")
@@ -67,7 +87,7 @@ def pretty_print_recent(df, history_cols, history_labels, n=3):
         if kind is None:
             return f"{int(row['iter_history'])}"
         if kind == "loss":
-            return fmt_value(row[col]["loss"])
+            return fmt_loss(row[col]["loss"])
         if kind == "L_err":
             return fmt_pct(rel_pct_err(row[col]["L_pred"], row[col]["L_data"]))
         if kind == "D_err":
@@ -162,13 +182,13 @@ def make_history_labels(history_cols):
         counts[kind] += 1
 
         if kind == "training":
-            base = "Train"
+            base = "Tr"
         elif kind == "validation":
-            base = "Val."
+            base = "Vl"
         else:
             base = col.replace("aux_history_", "")
 
-        labels[col] = base if counts[kind] == 1 else f"{base} {counts[kind]}"
+        labels[col] = base if counts[kind] == 1 else f"{base}{counts[kind]}"
 
     return labels
 
@@ -182,26 +202,17 @@ def rel_pct_err(pred, data, eps=1e-12):
     return 100.0 * abs(pred - data) / max(abs(data), eps)
 
 if __name__ == "__main__":
+    import argparse
     import matplotlib.pyplot as plt
     import math
-    tsd = 'training_stats'
 
-    # sampling_200
-    stats_pg_rgnn = [f'{tsd}/training_aux_info_PG_RANS_GNN']
-    stats_eg_rgnn = [f'{tsd}/training_aux_info_EG_RANS_GNN', f'{tsd}/training_aux_info_EG_RANS_GNN_2', f'{tsd}/training_aux_info_EG_RANS_GNN_3']
-    stats_rgnn = [f'{tsd}/training_aux_info_RANS_GNN', f'{tsd}/training_aux_info_RANS_GNN_2', f'{tsd}/training_aux_info_RANS_GNN_3']
-
-    # sample_b
-    stats_pg_rgnn = [f'{tsd}/training_aux_info_PG_RANS_GNN_sample_b',f'{tsd}/training_aux_info_PG_RANS_GNN_3_sample_b', f'{tsd}/training_aux_info_PG_RANS_GNN_tune_sample_b']
-    stats_eg_rgnn = [f'{tsd}/training_aux_info_EG_RANS_GNN_3_sample_b', f'{tsd}/training_aux_info_EG_RANS_GNN_tune_sample_b']
-    stats_rgnn = [f'{tsd}/training_aux_info_RANS_GNN_3_sample_b', f'{tsd}/training_aux_info_RANS_GNN_tune_sample_b']
-
-    connections = [
-        *stats_pg_rgnn,
-        *stats_eg_rgnn,
-        *stats_rgnn,
-    ]
-    df = connect(*connections, folder="")
+    parser = argparse.ArgumentParser(description="Plot one paper model's training history.")
+    parser.add_argument("--model", choices=PAPER_HISTORIES, default="rans")
+    args = parser.parse_args()
+    label, history = PAPER_HISTORIES[args.model]
+    df = connect(history, folder=str(HERE / "training_stats"))
+    output_dir = HERE / "plots"
+    output_dir.mkdir(exist_ok=True)
 
     # Find all aux_history_* columns automatically
     history_cols = sorted(
@@ -325,8 +336,6 @@ if __name__ == "__main__":
 
     plt.tight_layout()
 
-    # save as image or show gui
-    if 0:
-        plt.show()
-    else:
-        plt.savefig("plots/training_metrics.png")
+    fig.suptitle(label)
+    plt.savefig(output_dir / f"training_metrics_{args.model}.png")
+    plt.close(fig)

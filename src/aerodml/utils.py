@@ -4,6 +4,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from typing import Callable
 import jax
+import jax.numpy as jnp
 
 def print_content(print_dict:dict, tabs:int=0)->str:
     tabs_tr = '  ' * tabs
@@ -45,6 +46,127 @@ def rho_physical(p, T, R):
 
 stacked_normalize = stack_func(normalize, in_axes=(0, None, None))
 stacked_unnormalize = stack_func(unnormalize, in_axes=(0, None, None))
+
+def build_aggregate_info(indices, N, verbose=False):
+    indices = np.asarray(indices, dtype=np.int32)
+    counts = np.bincount(indices, minlength=N).astype(np.int32)
+    order = np.argsort(indices, kind='stable').astype(np.int32)
+    starts = np.cumsum(np.concatenate([np.array([0], dtype=np.int32), counts[:-1]])).astype(np.int32)
+
+    groups = {}
+    hist_counts, hist_num = np.unique(counts, return_counts=True)
+    for count in hist_counts:
+        if count == 0: continue
+        output_ids = np.where(counts == count)[0].astype(np.int32)
+        positions = starts[output_ids, None] + np.arange(count, dtype=np.int32)[None, :]
+        value_indices = order[positions]
+        groups[int(count)] = {'output_ids': output_ids, 'value_indices': value_indices}
+
+    if verbose:
+        n_values = indices.shape[0]
+        n_nonempty = np.count_nonzero(counts)
+        n_repeated = np.count_nonzero(counts > 1)
+        n_collisions = n_values - n_nonempty
+        max_count = int(counts.max()) if N else 0
+
+        padded_size = N * max_count
+        padded_waste = padded_size - n_values
+        padded_waste_pct = 100 * padded_waste / padded_size if padded_size else 0.0
+        old_padded_bytes = padded_size * (np.dtype(np.int32).itemsize + np.dtype(bool).itemsize) + counts.nbytes
+        grouped_bytes = counts.nbytes + sum(g['output_ids'].nbytes + g['value_indices'].nbytes for g in groups.values())
+
+        largest_count = max(groups, key=lambda k: groups[k]['value_indices'].nbytes) if groups else 0
+        largest_bytes = groups[largest_count]['value_indices'].nbytes if groups else 0
+
+        print("\n=== Aggregate Info ===")
+        print(f"N outputs: {N:,}")
+        print(f"N values: {n_values:,}")
+        print(f"Nonempty outputs: {n_nonempty:,}")
+        print(f"Empty outputs: {N - n_nonempty:,}")
+        print(f"Outputs with repeated indices: {n_repeated:,}")
+        print(f"Repeated/colliding values: {n_collisions:,}")
+        print(f"Min count: {counts.min() if N else 0}")
+        print(f"Mean count: {counts.mean() if N else 0:.3f}")
+        print(f"Max count: {max_count}")
+        print("Count histogram:")
+        for count, num in zip(hist_counts, hist_num):
+            print(f"  {count}: {num:,} outputs")
+        print(f"Number of size groups: {len(groups)}")
+        print(f"Grouped slots: {n_values:,} (0 wasted)")
+        print(f"Global padded slots would be: {padded_size:,}")
+        print(f"Global padded waste avoided: {padded_waste:,} ({padded_waste_pct:.2f}%)")
+        print(f"Original indices memory: {indices.nbytes / 1024**2:.2f} MB")
+        print(f"Grouped info memory: {grouped_bytes / 1024**2:.2f} MB")
+        print(f"Old padded info memory estimate: {old_padded_bytes / 1024**2:.2f} MB")
+        print(f"Estimated memory saved: {(old_padded_bytes - grouped_bytes) / 1024**2:.2f} MB")
+        print(f"Largest value-index group: count={largest_count}, memory={largest_bytes / 1024**2:.2f} MB")
+        print("======================\n")
+
+    return {'groups': groups, 'counts': counts}
+
+
+from functools import partial
+
+
+def _grouped_sum_impl(values, info, N):
+    out = jnp.zeros((N,) + values.shape[1:], dtype=values.dtype)
+
+    for count in sorted(info['groups']):
+        output_ids = jnp.asarray(info['groups'][count]['output_ids'])
+        value_indices = jnp.asarray(info['groups'][count]['value_indices'])
+
+        # sum
+        summed = jnp.sum(values[value_indices], axis=1, dtype=values.dtype)
+        out = out.at[output_ids].set(
+            summed,
+            indices_are_sorted=True,
+            unique_indices=True,
+        )
+
+    return out
+
+
+@partial(jax.custom_vjp, nondiff_argnums=(3,))
+def _grouped_sum(values, indices, info, N):
+    return _grouped_sum_impl(values, info, N)
+
+
+def _grouped_sum_fwd(values, indices, info, N):
+    out = _grouped_sum_impl(values, info, N)
+    return out, indices
+
+
+def _grouped_sum_bwd(N, indices, g):
+    grad_values = g[indices]
+    return grad_values, None, None
+
+
+_grouped_sum.defvjp(_grouped_sum_fwd, _grouped_sum_bwd)
+
+
+def aggregate_sum(values:jax.Array, indices, N, method:str='scatter', info:dict=None):
+    # Aggregate values into N output groups according to indices.
+    # values: array of shape (M, ...) containing values to sum.
+    # indices: integer array of shape (M,) mapping each value to an output group.
+    # method: 'scatter', 'sequential', or 'grouped'.
+    out = jnp.zeros((N,) + values.shape[1:], dtype=values.dtype)
+
+    if method == 'scatter':
+        return out.at[indices].add(values)
+
+    elif method == 'sequential':
+        indices = jnp.asarray(indices)
+        return jax.lax.fori_loop(0, values.shape[0], lambda i, x: x.at[indices[i]].set(x[indices[i]] + values[i]), out)
+
+    elif method == 'grouped':
+        if info is None:
+            info = build_aggregate_info(indices, N)
+
+        indices = jnp.asarray(indices)
+        return _grouped_sum(values, indices, info, N)
+
+    else:
+        raise ValueError(f"Unknown aggregate method: {method}")
 
 def mask_set(mask:np.ndarray , arrays:tuple[jax.Array])->tuple[jax.Array]:
     return_tuple = True
