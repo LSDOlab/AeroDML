@@ -16,16 +16,16 @@ def main():
     import matplotlib.pyplot as plt
 
     # Uncomment to regenerate model outputs before assembling the comparison.
-    # from run import main as evaluate
-    # for name, (checkpoint, fidelity) in MODELS.items():
-    #     print(f"Evaluating {name} model...")
-    #     evaluate(
-    #         load=True, train=False, save=False,
-    #         dataset_dir="sample_dataset", split="sample_split",
-    #         load_model_path=checkpoint, as_multifidelity_model=fidelity,
-    #         custom_vertices=False, model_name=f"sample_{name}_gnn",
-    #         exclude_validation_cases=False,
-    #     )
+    from run import main as evaluate
+    for name, (checkpoint, fidelity) in MODELS.items():
+        print(f"Evaluating {name} model...")
+        evaluate(
+            load=True, train=False, save=False,
+            dataset_dir="sample_dataset", split="sample_split",
+            load_model_path=checkpoint, as_multifidelity_model=fidelity,
+            custom_vertices=False, model_name=f"sample_{name}_gnn",
+            exclude_validation_cases=False,
+        )
 
     # ==================== Create comparison plot similar to the one in the readme ====================
     root = Path(__file__).resolve().parent / "post_processing_plots"
@@ -53,7 +53,7 @@ def main():
             left, right = axes[0, start].get_position().x0, axes[0, end].get_position().x1
             fig.text((left + right) / 2, 0.96, title, ha="center", va="top", fontfamily="serif", fontsize=31)
             fig.add_artist(plt.Line2D([left, right], [0.88, 0.88], transform=fig.transFigure, color="#18243B"))
-        # Match plot_field's saved jet/coolwarm colorbars, using this case's freestream.
+        # HARDCODED: Match plot_field's saved jet/coolwarm colorbars, using this case's freestream.
         cases_path = root.parent.parent.parent / "datasets/BWB/data/sample_dataset/cases.json"
         cases = json.loads(cases_path.read_text())["cases"]
         flow = next(case["flow_conditions"] for case in cases if str(case["key"]) == str(CASE_ID))
