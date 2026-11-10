@@ -1071,3 +1071,7 @@ def parse_cfd_case_directory(
         print(f"Wrote plots to: {data_dir / plots_dir_name}")
 
     return summaries
+
+
+if __name__ == "__main__":
+    parse_cfd_case_directory()

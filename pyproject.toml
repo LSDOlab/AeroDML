@@ -9,21 +9,21 @@ description = "Multifidelity aerodynamic flow prediction on mesh data using GNNs
 readme = "README.md"
 requires-python = ">=3.10.0"
 dependencies = [
-  "jax",
-  "numpy",
-  "scipy",
-  "h5py",
-  "optax",
-  "matplotlib",
-  "pyvista",
-  "Ofpp @ git+https://github.com/msperryucsd/ofpp.git",
-  "idwarp-jax @ git+https://github.com/LSDOlab/idwarp-jax.git",
+  "jax<=0.10.2",
+  "numpy<=2.4.6",
+  "scipy<=1.17.1",
+  "h5py<=3.16.0",
+  "optax<=0.2.8",
+  "matplotlib<=3.11.2",
+  "pyvista<=0.49.2",
+  "Ofpp @ git+https://github.com/msperryucsd/ofpp.git@844d182f7f7a5941c79e27a0710f0cc7c7b9be5b",
+  "idwarp-jax @ git+https://github.com/LSDOlab/idwarp-jax.git@4439d60e6f7bc826a5fbd575ac302a7ef702c079",
 ]
 
 [project.optional-dependencies]
 examples = [
-  "pandas",
-  "imageio",
+  "pandas<=3.1.1",
+  "imageio<=2.38.1",
 ]
 
 [tool.setuptools.packages.find]

@@ -379,6 +379,14 @@ def compute_latest_metric(training_stats, eps=1e-8):
     )
 
 
+def select_logging_indices(preferred, count):
+    """Keep configured case positions that exist, using the first case as fallback."""
+    if count < 1:
+        raise ValueError("Training and validation splits must each contain a case")
+    selected = [index for index in preferred if -count <= index < count]
+    return selected or [0]
+
+
 def train_model(
         model:Callable,
         res_func:Callable,
@@ -390,6 +398,8 @@ def train_model(
         param_info:ParameterInfo,
         validation_config_idxs:list,
     )->dict:
+    if not training_configs or not test_configs:
+        raise ValueError("Training and validation splits must each contain a case")
     import optax
 
     # Main graph topology
@@ -438,8 +448,8 @@ def train_model(
     best_save_metric = np.inf
 
     # ========= LOGGING Preprocessing ========= 
-    TRAIN_CONFIG_IDXS = [2, 5,]
-    VALIDATION_CONFIG_IDXS = validation_config_idxs
+    TRAIN_CONFIG_IDXS = select_logging_indices([2, 5], len(training_configs))
+    VALIDATION_CONFIG_IDXS = select_logging_indices(validation_config_idxs, len(test_configs))
     evaluation_cases = []
 
     for case_number, config_idx in enumerate(TRAIN_CONFIG_IDXS, start=1):

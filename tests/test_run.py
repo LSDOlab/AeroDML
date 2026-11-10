@@ -1,5 +1,6 @@
 """Driver unit tests and explicitly enabled GPU smoke tests. See README.md."""
 import os
+import json
 import shutil
 import sys
 import tempfile
@@ -7,6 +8,7 @@ import types
 import unittest
 from contextlib import ExitStack
 from pathlib import Path
+from zipfile import ZipFile
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +23,7 @@ import evaluate_sample
 import numpy as np
 import jax
 from aerodml import postprocessing_viz as viz
+from aerodml.train import select_logging_indices, train_model
 
 
 class DriverTests(unittest.TestCase):
@@ -70,6 +73,17 @@ class DriverTests(unittest.TestCase):
             with self.subTest(fidelity=fidelity):
                 self.exercise(fidelity)
 
+    def test_logging_indices_for_small_splits(self):
+        self.assertEqual(select_logging_indices([2, 5], 2), [0])
+        self.assertEqual(select_logging_indices([2, -2, 5, -5, 9, -9], 1), [0])
+        self.assertEqual(select_logging_indices([2, -2, 5, -5, 9, -9], 3), [2, -2])
+        with self.assertRaises(ValueError):
+            select_logging_indices([2], 0)
+        for training, validation in (([], [{}]), ([{}], [])):
+            with self.subTest(training=len(training), validation=len(validation)):
+                with self.assertRaisesRegex(ValueError, 'Training and validation'):
+                    train_model(None, None, None, training, validation, {}, {}, None, [])
+
     def test_training_from_scratch_and_checkpoint(self):
         for fidelity in (False, 'panel', 'euler'):
             for load in (False, True):
@@ -77,6 +91,11 @@ class DriverTests(unittest.TestCase):
                     self.exercise(fidelity, train=True, load=load, save=True)
 
     def test_evaluator_selects_shipped_assets(self):
+        manifest = json.loads((ROOT / 'asset_manifest.json').read_text())
+        records = {row['path']: row for row in manifest['files']}
+        archive_path = ROOT / 'aero-dml-assets-data.zip'
+        archive = ZipFile(archive_path) if archive_path.is_file() else None
+        self.addCleanup(archive.close if archive else lambda: None)
         for name, (checkpoint, fidelity) in evaluate_sample.MODELS.items():
             with self.subTest(model=name), patch.object(sys, 'argv', ['evaluate_sample.py', '--model', name]), patch.object(run, 'main') as main:
                 evaluate_sample.main()
@@ -85,7 +104,13 @@ class DriverTests(unittest.TestCase):
                 self.assertFalse(options['save'])
                 self.assertFalse(options['exclude_validation_cases'])
                 self.assertEqual(options['as_multifidelity_model'], fidelity)
-                self.assertTrue((MODEL / 'saved_parameters' / checkpoint).is_file())
+                asset = (MODEL / 'saved_parameters' / checkpoint)
+                relative = asset.relative_to(ROOT).as_posix()
+                self.assertIn(relative, records)
+                if asset.is_file():
+                    self.assertEqual(asset.stat().st_size, records[relative]['bytes'])
+                if archive:
+                    self.assertEqual(archive.getinfo(relative).file_size, records[relative]['bytes'])
                 self.assertTrue((run.DATA_DIR / options['dataset_dir'] / (options['split'] + '.json')).is_file())
 
 
@@ -106,9 +131,7 @@ class GPUSmokeTests(unittest.TestCase):
             self.assertEqual(len(cases), 3)
             if not training:
                 return [], cases
-            # Existing training logger indexes training cases 2 and 5.
-            # Repeat two cases in memory only; the third remains held out.
-            return cases[:2] * 3, cases[2:]
+            return cases[:2], cases[2:]
 
         def train(*args):
             args = list(args)
