@@ -309,7 +309,6 @@ def main(
     # =========================== Visualize Force Error Histogram =========================== 
     from aerodml.postprocessing_viz import plot_case_histogram, analyze_aero_forces #, analyze_model
     analyze_aero_forces(model_eval, params, vid_data, constants, screenshot=True, model_name=model_name,full_analysis=True)
-    return
 
     #================= EXTRA VISUALIZATIONS=================
     from aerodml.postprocessing_viz import plot_surface_comparison, plot_xc, XCWindow
@@ -318,18 +317,6 @@ def main(
     # last_data_point = max(vid_data, key=lambda c: int(c['case_id']))
     xc_window_5 = XCWindow(plane = ('y', (0,5,0)), center = 'auto')
     xc_window_16 = XCWindow(plane = ('y', (0,16,0)), center = 'auto')
-    # if '_panel_' in model_name:
-    #     plot_surface_comparison(
-    #         model_eval, params, last_data_point, constants, screenshot=True, model_name=model_name,
-    #         left='low-fidelity', right='CFD', panel_data=max(cfd_data, key=lambda c: int(c['case_id']))['low_fidelity_data'], panel_topology=lowfi_topology['topology'], smooth_scalars = True,
-    #         cross_section_stations = [xc_window_5, xc_window_16],
-    #     )
-    # else:
-    #     plot_surface_comparison(
-    #         model_eval, params, last_data_point, constants, screenshot=True, model_name=model_name,
-    #         left='NN', right='CFD', smooth_scalars = True,
-    #         cross_section_stations = [xc_window_5, xc_window_16],
-    #     )
 
     # =========================== Visualize paper comparison fields ===========================
     from aerodml.postprocessing_viz import plot_field
@@ -339,7 +326,8 @@ def main(
     # sorted_test_data = [item for item in sorted_test_data if int(item['case_id']) in [296]]
 
     camera = 'pos_3d_paper'
-    for state in ['Ma', 'p']:
+    plot_states = ['p']
+    for state in plot_states:
         for test_data_point in sorted_test_data:
             for model_type in ['CFD', 'NN', 'error']:
                 if model_type == 'error':

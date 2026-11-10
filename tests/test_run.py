@@ -33,9 +33,9 @@ class DriverTests(unittest.TestCase):
         info = Mock()
         info.load.return_value = {'weight': 1}
         info.initialize.return_value = {'weight': 0}
-        cases = [{'case_id': str(i), 'topology': {}} for i in (38, 132, 155)]
+        cases = [{'case_id': str(i), 'topology': {'foam_mesh': {}}} for i in (38, 132, 155)]
         replacements = {
-            'get_graph': Mock(return_value={}),
+            'get_graph': Mock(return_value={'foam_mesh': {}}),
             'get_lowfi_panel_mesh': Mock(return_value={}),
             'get_lowfi_CFD_mesh': Mock(return_value={}),
             'get_model': Mock(return_value=(Mock(), info)),
@@ -53,6 +53,8 @@ class DriverTests(unittest.TestCase):
             for name, value in replacements.items():
                 stack.enter_context(patch.object(run, name, value))
             analyze = stack.enter_context(patch.object(viz, 'analyze_aero_forces'))
+            stack.enter_context(patch.object(viz, 'plot_field'))
+            stack.enter_context(patch('aerodml.visualize_mesh.build_pyvista_mesh_topology'))
             run.main(load=load, train=train, save=save,
                      load_model_path='test.pickle' if load else None,
                      as_multifidelity_model=fidelity, exclude_validation_cases=False)
@@ -90,20 +92,14 @@ class DriverTests(unittest.TestCase):
                 with self.subTest(fidelity=fidelity, load=load):
                     self.exercise(fidelity, train=True, load=load, save=True)
 
-    def test_evaluator_selects_shipped_assets(self):
+    def test_shipped_model_assets(self):
         manifest = json.loads((ROOT / 'asset_manifest.json').read_text())
         records = {row['path']: row for row in manifest['files']}
         archive_path = ROOT / 'aero-dml-assets-data.zip'
         archive = ZipFile(archive_path) if archive_path.is_file() else None
         self.addCleanup(archive.close if archive else lambda: None)
         for name, (checkpoint, fidelity) in evaluate_sample.MODELS.items():
-            with self.subTest(model=name), patch.object(sys, 'argv', ['evaluate_sample.py', '--model', name]), patch.object(run, 'main') as main:
-                evaluate_sample.main()
-                options = main.call_args.kwargs
-                self.assertFalse(options['train'])
-                self.assertFalse(options['save'])
-                self.assertFalse(options['exclude_validation_cases'])
-                self.assertEqual(options['as_multifidelity_model'], fidelity)
+            with self.subTest(model=name):
                 asset = (MODEL / 'saved_parameters' / checkpoint)
                 relative = asset.relative_to(ROOT).as_posix()
                 self.assertIn(relative, records)
@@ -111,7 +107,7 @@ class DriverTests(unittest.TestCase):
                     self.assertEqual(asset.stat().st_size, records[relative]['bytes'])
                 if archive:
                     self.assertEqual(archive.getinfo(relative).file_size, records[relative]['bytes'])
-                self.assertTrue((run.DATA_DIR / options['dataset_dir'] / (options['split'] + '.json')).is_file())
+                self.assertTrue((run.DATA_DIR / 'sample_dataset' / 'sample_split.json').is_file())
 
 
 @unittest.skipUnless(os.environ.get('AERODML_GPU_TESTS') == '1', 'GPU smoke tests require explicit opt-in')

@@ -127,7 +127,7 @@ python package_assets.py
 To evaluate the supplied sample, run from `cases/aircraft_BWB/model/`:
 
 ```bash
-python evaluate_sample.py --model rans
+python evaluate_sample.py
 ```
 
-Choose `panel` or `euler` for the other models.
+This evaluates the RANS, panel-guided, and Euler-guided models in sequence.

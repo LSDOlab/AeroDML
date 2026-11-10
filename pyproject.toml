@@ -7,7 +7,7 @@ name = "aerodml"
 version = "0.2.0"
 description = "Multifidelity aerodynamic flow prediction on mesh data using GNNs"
 readme = "README.md"
-requires-python = ">=3.10.0"
+requires-python = ">=3.11.0"
 dependencies = [
   "jax<=0.10.2",
   "numpy<=2.4.6",
