@@ -173,7 +173,7 @@ if __name__ == "__main__":
     
     create_dataset_split(
         split_name="split_cfd",
-        test_ratio=1.00,
+        test_ratio=0.20,
         seed=898,
         max_residual=1e-7,
         manual_invalid_cases = manual_strict_invalid,

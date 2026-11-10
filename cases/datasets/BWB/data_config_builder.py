@@ -206,7 +206,7 @@ def _convert_values_for_runtime(cases):
 
 def write_dataset_config(data_dir, n_samples, geometry_ranges, flow_ranges=None, seed=99):
     """
-    Write cases.json.
+    Write a new cases.json; refuse to overwrite existing configurations.
 
     n_samples is the TOTAL number of cases.
     Case key "0" is always the reference case.
@@ -217,6 +217,14 @@ def write_dataset_config(data_dir, n_samples, geometry_ranges, flow_ranges=None,
 
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
+    config_path = data_dir / "cases.json"
+    if config_path.exists():
+        raise FileExistsError(
+            f"Refusing to overwrite existing configuration: {config_path}. "
+            "To regenerate cases, delete cases.json first. Regenerating cases "
+            "will break the correspondence with any previously generated data; "
+            "generate that data again or use a new dataset directory."
+        )
 
     n_lhs_samples = n_samples - 1
 
@@ -243,8 +251,7 @@ def write_dataset_config(data_dir, n_samples, geometry_ranges, flow_ranges=None,
         "cases": cases,
     }
 
-    config_path = data_dir / "cases.json"
-    with open(config_path, "w") as f:
+    with open(config_path, "x") as f:
         json.dump(config, f, indent=2)
 
     return _convert_values_for_runtime(cases)

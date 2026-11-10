@@ -8,8 +8,10 @@ The adjacent helper scripts are templates for generating a new dataset, not
 commands for recreating or overwriting this release sample:
 
 - `build_configs.py` contains geometry/flow ranges for 350 new configurations.
-  It currently exits before writing. Adapt its settings and output directory,
-  then remove that explicit `exit()` when ready to generate a separate dataset.
+  Adapt its settings and output directory to generate a separate dataset.
+  It raises an error if `cases.json` already exists. To regenerate cases, delete
+  that file first; the new configurations will break the correspondence with
+  previously generated data, which must also be regenerated.
 - `build_dataset_split.py` reads `rans/parsed_case_summary.json` and optionally
   `euler/parsed_case_summary.json` from its output directory. Those summaries are
   not bundled here. Run it in a new generated dataset directory, or call

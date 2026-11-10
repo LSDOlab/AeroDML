@@ -3,10 +3,30 @@ The development of this software was supported (, in part,) by the Air Force Res
 <!-- ## Reference -->
 ## **AeroDML** (Aerodynamic Deep Multifidelity Learning)
 
+[![CPU tests](https://github.com/LSDOlab/AeroDML/actions/workflows/cpu-tests.yml/badge.svg)](https://github.com/LSDOlab/AeroDML/actions/workflows/cpu-tests.yml)
+
 This repository contains the RANS-GNN implementation associated with [Multifidelity Surrogate Modeling for 3D Aerodynamic Flow Field Prediction Using Graph Neural Networks](https://www.researchgate.net/publication/406026389_Multifidelity_Surrogate_Modeling_for_3D_Aerodynamic_Flow_Field_Prediction_Using_Graph_Neural_Networks).
 
-For data generation guidelines, follow README located in /cases/datasets
-For ML training/analysis guidelines, follow README located in /cases/aircraft_BWB/model
+AeroDML combines graph neural networks with optional panel-method or Euler
+inputs to predict RANS flow fields for aircraft design. The application was
+developed for HPC use on a blended-wing-body aircraft and can be adapted to
+other configurations.
+
+See the [documentation](https://lsdolab.github.io/AeroDML/) for the project
+overview, package and model, data generation and training, and optimization.
+The same pages are available in [docs/](docs/index.md).
+
+## Tests
+
+The badge above shows the current GitHub Actions CPU test status. To run the
+suite locally from the repository root with the package installed:
+
+```bash
+JAX_PLATFORMS=cpu python -m unittest discover -s tests -v
+```
+
+These tests cover driver control flow, sample asset selection, and training
+logging. See [tests/README.md](tests/README.md) for coverage and GPU smoke tests.
 
 ## Download release assets
 

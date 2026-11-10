@@ -9,7 +9,7 @@ cases. Its arrays are distributed in the release asset ZIPs.
 
 | Path | Purpose |
 | --- | --- |
-| `BWB/data/sample_dataset/build_configs.py` | Example geometry and flow ranges; exits before writing so it cannot overwrite the release sample. |
+| `BWB/data/sample_dataset/build_configs.py` | Example geometry and flow ranges; refuses to overwrite an existing `cases.json`. |
 | `BWB/data_config_builder.py` | Creates and reads `cases.json`. |
 | `BWB/batch_rans.sh`, `BWB/generate_rans_single.py` | Runs configured RANS cases. |
 | `BWB/batch_euler.sh`, `BWB/generate_euler_single.py` | Runs optional Euler cases. |
@@ -21,7 +21,7 @@ cases. Its arrays are distributed in the release asset ZIPs.
 
 1. Copy the two helper scripts from `sample_dataset/` into a **new** directory
    below `BWB/data/`. Set ranges, output path, and sample count in
-   `build_configs.py`, then remove its protective `exit()`. Run it from the new
+   `build_configs.py`. Run it from the new
    directory to create `cases.json`. Case 0 is the reference configuration.
 2. Prepare a common OpenFOAM reference mesh and a warm-start time at
    `<mesh>/processor0/9999`. Update BWB geometry, CFD settings, patch names,

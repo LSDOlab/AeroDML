@@ -5,6 +5,7 @@ docs_dir: docs
 theme:
   name: readthedocs
 nav:
-  - Software: index.md
-  - Training: training.md
-  - MDO: mdo.md
+  - Overview: index.md
+  - Package and model: package.md
+  - Data generation and training: training.md
+  - Optimization: mdo.md

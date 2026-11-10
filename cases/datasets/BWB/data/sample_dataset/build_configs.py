@@ -95,7 +95,6 @@ if __name__ == "__main__":
         }
     }
 
-    exit()
     write_dataset_config(
         data_dir="",
         n_samples=350,
