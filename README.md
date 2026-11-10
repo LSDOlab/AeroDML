@@ -14,17 +14,7 @@ other configurations.
 
 ![Case 38 pressure comparison: RANS reference, GNN predictions, and prediction errors](docs/assets/pressure_comparison_case_38.png)
 
-The left column shows the RANS reference for sample case 38. The next three
-columns show predictions from the data-driven RANS-GNN, panel-guided
-PG-RANS-GNN, and Euler-guided EG-RANS-GNN. The final three columns show their
-signed pressure errors (prediction minus RANS): red indicates overprediction,
-blue indicates underprediction, and neutral colors indicate errors near zero.
-
-The top row shows aircraft surface pressure, with windows marking the section
-shown below at y = 16 m. All columns use the same crop within each row; pressure
-views share one color scale, and error views share another. For this case, the
-multifidelity models reduce the visible pressure discrepancies, with the
-Euler-guided model showing the smallest errors overall in these views.
+*Surface and cross-section pressure predictions and errors for the single-fidelity, panel-guided, and Euler-guided GNN models compared with RANS for a sample test case.*
 
 See the [documentation](https://lsdolab.github.io/AeroDML/) for the project
 overview, package and model, data generation and training, and optimization.
