@@ -9,7 +9,7 @@ import json
 
 from typing import Callable
 
-def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable = None, num_cases: int = None) -> dict:
+def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable = None, num_cases: int = None, file_filter: Callable = None,) -> dict:
     """
     Load CFD .npz files and attach usable/train flags from a dataset split JSON.
 
@@ -30,12 +30,20 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
         num_cases:
             Optional maximum number of usable cases to load.
 
+        file_filter:
+            Optional function that receives the .npz filename and returns
+            True/False. Applied before loading the file.
+
     Returns:
         List of case dictionaries, same as before, but now with:
             case_data["usable"] = np.array(True/False)
             case_data["train"] = np.array(True/False)
     """
 
+    # ------------------------------------------------------------
+    # Load the selected split JSON.
+    # This file tells us which case IDs are valid and train/test.
+    # ------------------------------------------------------------
     if not (split_dir is None):
         # add json suffux if not present
         if not split_dir.endswith(".json"):
@@ -49,12 +57,20 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
             for row in split_json["cases"]
         }
 
+    # ------------------------------------------------------------
+    # Find all CFD case files.
+    # Sorting by case number keeps loading deterministic.
+    # ------------------------------------------------------------
     files = [f for f in os.listdir(dir) if f.endswith(".npz")]
 
     files = sorted(
         files,
         key=lambda name: int(name.replace(".npz", "")) if name.replace(".npz", "").isdigit() else name
     )
+
+    # Filter using only the filename, before loading any .npz data.
+    if file_filter is not None:
+        files = [file for file in files if file_filter(file)]
 
     data = []
     start = time.time()
@@ -70,6 +86,9 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
         case_data = {}
         file_path = os.path.join(dir, file)
 
+        # --------------------------------------------------------
+        # Load the .npz exactly like before.
+        # --------------------------------------------------------
         with np.load(file_path, allow_pickle=True) as f:
             for key in f.files:
                 case_data[key] = f[key]
@@ -78,6 +97,15 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
             case_id = file.replace(".npz", "")
             case_data["case_id"] = case_id
 
+        # --------------------------------------------------------
+        # Attach split information.
+        #
+        # usable = valid/invalid from the split JSON.
+        # train = True for train, False for test.
+        #
+        # Invalid cases are not loaded.
+        # Test cases are still loaded; they just get train=False.
+        # --------------------------------------------------------
         if not (split_dir is None):
             split_row = split_lookup.get(case_data["case_id"], None)
 
@@ -97,6 +125,10 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
         case_data["usable"] = np.array(usable)
         case_data["train"] = np.array(train)
 
+        # --------------------------------------------------------
+        # Skip invalid/unusable cases.
+        # This replaces the old .npz-stored usable logic.
+        # --------------------------------------------------------
         if not bool(case_data["usable"]):
             print(
                 f"  * Warning: Case {case_data['case_id']} is unusable according to split JSON. "
@@ -113,6 +145,9 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
             num_failed_cases += 1
             continue
 
+        # --------------------------------------------------------
+        # Keep useful metadata grouped in info.
+        # --------------------------------------------------------
         case_data["info"] = {
             "converged": case_data["converged"],
             "file_name": file,
@@ -120,19 +155,32 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
             "train": case_data["train"],
         }
 
+        # --------------------------------------------------------
+        # Convert object arrays into normal Python dictionaries.
+        # --------------------------------------------------------
         case_data["flow_condition"] = case_data["flow_condition"].item()
         case_data["geometry"] = case_data["geometry"].item()
 
         case_data["aircraft_geometry"] = case_data["geometry"]
 
+        # --------------------------------------------------------
+        # Keep your normalized flow_condition format.
+        # --------------------------------------------------------
+        raw_flow_condition = case_data["flow_condition"]
+        pitch = np.asarray(raw_flow_condition.get("pitch", 0.0)).reshape(-1)[0]
         case_data["flow_condition"] = {
-            "v_inf": np.linalg.norm(case_data["flow_condition"]["v_inf"]),
+            "v_inf": np.linalg.norm(raw_flow_condition["v_inf"]),
             "alpha": 0.0,
-            "T_inf": case_data["flow_condition"]["T_inf"],
-            "p_inf": case_data["flow_condition"]["p_inf"],
-            "nuTilda_inf": case_data["flow_condition"]["nuTilda"],
+            "pitch": pitch,
+            "T_inf": raw_flow_condition["T_inf"],
+            "p_inf": raw_flow_condition["p_inf"],
+            "nuTilda_inf": raw_flow_condition["nuTilda"],
         }
 
+        # --------------------------------------------------------
+        # Euler cases may not have nuTilda.
+        # If missing, fill it using the freestream value.
+        # --------------------------------------------------------
         if "nuTilda" not in case_data:
             case_data["nuTilda"] = (
                 np.ones_like(case_data["p"]) * case_data["flow_condition"]["nuTilda_inf"]
@@ -157,7 +205,9 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
         f"from {dir} in {elapsed:.2f}s (~{elapsed / len(data):.2f}s per case)"
     )
 
+    # ------------------------------------------------------------
     # Shape consistency checks.
+    # ------------------------------------------------------------
     num_vertices, num_states = None, None
 
     for case in data:
@@ -172,6 +222,10 @@ def load_cfd(dir: str, split_dir: str, analyze: bool = False, filter: Callable =
                 f"Case {case['case_id']} has different number of states than expected"
             )
 
+    # ------------------------------------------------------------
+    # Keep your existing analysis/debug block.
+    # Assumes print_content and visualize_scalars are defined elsewhere.
+    # ------------------------------------------------------------
     if analyze:
         print(f"\n=== CFD Data Summary (case 0/{len(data)}) ===")
         print_content(data[0], 0)

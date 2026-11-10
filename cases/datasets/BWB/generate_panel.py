@@ -25,8 +25,12 @@ if __name__ == '__main__':
         'rho0': rho0,
     }
 
+    panel_surface_mesh_projection_file_name = "panel_projections_new.pickle"
+    panel_surface_mesh_projection_file_name = "panel_projections_NEWHASH.pickle"
+
     cfd_runner_dict = build_panel_func(
         operating_reference,
+        panel_surface_mesh_projection_file_name = panel_surface_mesh_projection_file_name,
     )
     cfd_writer = cfd_runner_dict["model"]
 
@@ -52,5 +56,5 @@ if __name__ == '__main__':
             configuration = dataset_input['geometry_configuration'],
             flow_condition = dataset_input['flow_conditions'],
             sample_points = None,
-            dir = output_dir
+            dir = output_dir,
         )

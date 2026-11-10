@@ -6,21 +6,24 @@ from aerodml.utils import print_content
 # Edit these settings only
 # ============================================================
 
-DATASET_DIR = "sample_case"
-SPLIT_DIR = "split_0"
+DATASET_DIR = "sample_dataset"
+SPLIT_DIR = "sample_split"
+# CFD_MESH = {"rans": "mesh_3M", "euler": "mesh_112k"}
 CFD_MESH = {"rans": "mesh_639k", "euler": "mesh_112k"}
 
 # Any subset/order of: "rans", "euler", "panel"
 SOLVERS = ("rans",)
 # SOLVERS = ("rans", "euler")
-# SOLVERS = ("rans", "euler", 'panel')
+SOLVERS = ("rans", 'panel', 'euler')
+SOLVERS = ('euler',)
 
 # CFD: "p", "pressure", "T", "nuTilda", or "U_mag".
 # Panel: "p", "pressure", "U_mag", or "velocity_magnitude".
+STATE = "U_mag"
 # STATE = "p"
 STATE = "T"
 
-# None = all cases. Otherwise use 0-based case ids, e.g. (0, 3, 7).
+# None selects all cases in the sample split.
 CASES = None
 
 MODE = "interactive"       # "interactive" or "video"
@@ -34,8 +37,8 @@ SHARED_CLIM = True          # When CLIM is None, share one auto scale across plo
 AUTO_PERCENTILES = (1, 99)  # Use None for true min/max.
 
 # Either a key from available_cameras or a camera dict with position/view_angle/clipping_range.
-# CAMERA = "pos_2"
-CAMERA = "TE"
+CAMERA = "pos_2"
+# CAMERA = "TE"
 # CAMERA = "TE_underside"
 
 MIRROR_CFD = True           # Mirror RANS/Euler across y=0. Panel is left unmirrored.
@@ -45,7 +48,7 @@ SMOOTH_SCALARS = False
 WINDOW_WIDTH = 1200         # For mp4, keep width and row height divisible by 16.
 ROW_HEIGHT = 512
 
-VIDEO_PATH = f"plots/CFD_surface_{CAMERA}_{STATE}_{DATASET_DIR}_{SPLIT_DIR}.mp4"
+VIDEO_PATH = f"plots/CFD_surface_{CAMERA}_{STATE}_{DATASET_DIR}_{SPLIT_DIR}_270.mp4"
 # ============================================================
 
 if MODE == "video":
@@ -60,7 +63,8 @@ from aerodml.visualize_mesh import available_cameras, visualize_surface
 
 
 LOAD_SETTINGS = {"verbose": False, "run_checks": True, "visualize": False}
-PANEL_CONNECTIVITY = "CONNECTIVITY.pkl"
+# PANEL_CONNECTIVITY = "CONNECTIVITY.pkl"
+PANEL_CONNECTIVITY = "CONNECTIVITY_NEW.pkl"
 
 
 def camera_name(camera):
@@ -91,6 +95,13 @@ def load_data():
     split_path = f"{dataset_path}/{SPLIT_DIR}"
     loaded = {}
 
+    cases_strs = {str(case_id) for case_id in CASES}
+    def case_file_filter(filename_raw:str)->bool:
+        filename = filename_raw.split('.')[0]
+        if filename in cases_strs:
+            return True
+        return False
+    
     for solver in SOLVERS:
         if solver in CFD_MESH:
             topo = get_graph(
@@ -101,7 +112,7 @@ def load_data():
             )
             loaded[solver] = {
                 "topology": topo,
-                "data": load_cfd_data(dir=f"{dataset_path}/{solver}", split=split_path, num_cases=NUM_CASES),
+                "data": load_cfd_data(dir=f"{dataset_path}/{solver}", split=split_path, file_filter=case_file_filter),
             }
             # print_content(topo)
             # print_content(loaded[solver]['data'][0])
@@ -117,9 +128,10 @@ def load_data():
                 dual_load_settings=LOAD_SETTINGS,
                 coarse_load_settings=LOAD_SETTINGS,
             )
+            LOAD_SETTINGS['visualize'] = True
             loaded["panel"] = {
+                "data": load_panel_data(dir=f"{dataset_path}/panel", split_dir=split_path, file_filter=case_file_filter),
                 "topology": get_panel_mesh(PANEL_CONNECTIVITY, rans_topo, LOAD_SETTINGS),
-                "data": load_panel_data(dir=f"{dataset_path}/panel", split_dir=split_path),
             }
             continue
 
@@ -222,19 +234,17 @@ def add_cfd_surface(plotter, solver, pack, case_id, clim, camera):
 def add_panel_surface(plotter, pack, case_id, clim, camera):
     case = pack["data"][case_id]
     tris = np.asarray(pack["topology"]["triangles"], dtype=np.int64)
-    faces = np.hstack([np.full((tris.shape[0], 1), 3, dtype=np.int64), tris]).ravel()
+    quads = np.asarray(pack["topology"]["quads"], dtype=np.int64)
+
+    tri_faces = np.hstack([np.full((tris.shape[0], 1), 3, dtype=np.int64), tris]).ravel()
+    quad_faces = np.hstack([np.full((quads.shape[0], 1), 4, dtype=np.int64), quads]).ravel()
+    faces = np.concatenate([tri_faces, quad_faces])
 
     surf = pv.PolyData(np.asarray(case["panel_mesh"]), faces)
     surf.cell_data["field"] = panel_scalars(case)
 
     plotter.add_mesh(surf, scalars="field", cmap=CMAP, clim=clim, show_scalar_bar=SHOW_SCALAR_BAR)
     plotter.add_title(f"PANEL — {case.get('case_id', f'case_{case_id}')}")
-    plotter.add_axes()
-
-    cam = available_cameras[camera]
-    plotter.camera_position = cam["position"]
-    plotter.camera.view_angle = cam["view_angle"]
-    plotter.camera.clipping_range = cam["clipping_range"]
 
 
 def make_plotter(loaded, case_id, camera, off_screen=False):
@@ -286,7 +296,8 @@ def main():
     loaded = load_data()
     camera = camera_name(CAMERA)
     n_cases = len(next(iter(loaded.values()))["data"])
-    case_ids = list(range(n_cases)) if CASES is None else list(CASES)
+    # case_ids = list(range(n_cases)) if CASES is None else list(CASES)
+    case_ids = list(range(n_cases))
 
     if MODE == "video":
         write_video(loaded, case_ids, camera)

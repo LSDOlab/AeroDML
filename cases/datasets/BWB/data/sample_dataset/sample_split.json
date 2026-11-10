@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "split_name": "sample_split",
+  "test_ratio": 1.0,
+  "n_cases": 3,
+  "n_valid": 3,
+  "n_train": 0,
+  "n_test": 3,
+  "cases": [
+    {
+      "case": 38,
+      "valid": true,
+      "split": "test",
+      "invalid_reasons": []
+    },
+    {
+      "case": 132,
+      "valid": true,
+      "split": "test",
+      "invalid_reasons": []
+    },
+    {
+      "case": 155,
+      "valid": true,
+      "split": "test",
+      "invalid_reasons": []
+    }
+  ]
+}

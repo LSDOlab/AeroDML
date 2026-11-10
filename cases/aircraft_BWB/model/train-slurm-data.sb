@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --job-name=train
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --gpus=1
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=slurm-%j.out
+# Supply --account, --partition, and optional --qos to sbatch for your cluster.
+
+set -e
+# Activate a configured environment; initialize conda and any required modules before submission.
+
+# TSCC GPU module setup; adapt module names for other clusters.
+module purge
+module load gpu
+
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate YOUR_ENV_NAME
+
+# Submit from the model directory; pass --dataset and --split after the .sb filename.
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+
+# run training
+python -u train_rans_gnn.py "$@"

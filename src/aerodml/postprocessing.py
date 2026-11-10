@@ -4,58 +4,14 @@ import jax.numpy as jnp
 import os
 import csv
 import matplotlib.pyplot as plt
+from .utils import print_content
 
 def compute_surface_areas_and_normals(points: jax.Array, mesh_topology:dict):
-    faces = mesh_topology["faces"]
-    face_type = faces["type"]
-    face_points = faces["points"]                    # ragged list[list[int]]
-    owner = faces["owner"]
+    """Compatibility wrapper around the geometry-builder implementation."""
+    from .load_mesh import compute_face_geometry
 
-    # ===================== PREPARATION =====================
-    # Global face ids of surface faces, in mesh order
-    surface_face_ids = np.flatnonzero(face_type == 1).astype(np.int32)
-
-    # Ragged list of vertex ids for just the surface faces
-    surf_face_points = [face_points[fid] for fid in surface_face_ids]
-
-    num_surface_faces = len(surf_face_points)
-    counts = np.asarray([len(fp) for fp in surf_face_points], dtype=np.int32) # number of vertices per surface face
-
-    # Flattened vertex ids for p_i
-    flat_idx = np.concatenate(
-        [np.asarray(fp, dtype=np.int32) for fp in surf_face_points], axis=0
-    )
-
-    # Flattened vertex ids for p_{i+1} offset by one for cross product later with flat_idx
-    next_idx = np.concatenate(
-        [np.roll(np.asarray(fp, dtype=np.int32), -1) for fp in surf_face_points], axis=0
-    )
-
-    # We need to keep track of which face each vertex belongs to for the cross product later, so we create an array mapping each vertex -> face id
-    face_id = np.concatenate(
-        [np.full(len(fp), i, dtype=np.int32) for i, fp in enumerate(surf_face_points)],
-        axis=0,
-    )
-
-    # ===================== REAL CALCUALTION =====================
-    num_surface_faces = counts.shape[0]
-
-    # p_i and p_{i+1} for every polygon edge on every surface face
-    pi = points[flat_idx]      # (K, 3)
-    pj = points[next_idx]      # (K, 3)
-
-    # Sum of all cross-products per face in order leads to the area vector, whose magnitude is the area and direction is the normal
-    # 0.5 * sum_i cross(p_i, p_{i+1}) = oriented area vector
-    area_vec = 0.5 * jnp.zeros((num_surface_faces, 3)).at[face_id].add(jnp.cross(pi, pj))  # (Fsurf, 3)
-
-    # Face areas
-    areas = jnp.linalg.norm(area_vec, axis=1)  # (Fsurf,)
-
-    # Unit normals from area vectors
-    eps = 1e-8
-    normals = -area_vec / jnp.maximum(areas[:, None], eps)
-    assert areas.shape == (num_surface_faces,)
-    assert normals.shape == (num_surface_faces, 3)
+    surface_face_ids = np.flatnonzero(mesh_topology['faces']['type'] == 1).astype(np.int32)
+    normals, areas, _ = compute_face_geometry(mesh_topology, points, surface_face_ids)
     return areas, normals
 
 def wall_shear_force_wall_function(pressure, velocity, temperature, normals, areas,
@@ -69,8 +25,14 @@ def wall_shear_force_wall_function(pressure, velocity, temperature, normals, are
  
     v_normal = jnp.sum(velocity * normals, axis=1, keepdims=True)
     v_tangent = velocity - v_normal * normals
-    U = jnp.linalg.norm(v_tangent, axis=1)
-    t_hat = v_tangent / jnp.maximum(U[:, None], 1e-12)
+    # Keep the norm itself differentiable at stagnation. Applying maximum()
+    # after jnp.linalg.norm() protects the forward division, but its VJP can
+    # already contain 0/0 when v_tangent is zero (or underflows to zero in
+    # float32). Putting the epsilon inside sqrt keeps every intermediate in
+    # the reverse pass finite.
+    speed_eps = jnp.asarray(1e-12, dtype=v_tangent.dtype)
+    U = jnp.sqrt(jnp.sum(v_tangent * v_tangent, axis=1) + speed_eps**2)
+    t_hat = v_tangent / U[:, None]
  
     # --- thermodynamics ---
     R = 287.0
@@ -136,7 +98,8 @@ def wall_shear_force_wall_function(pressure, velocity, temperature, normals, are
     return Fv, tau_w, u_tau
  
 def compute_forces(pressure, velocity, nu_tilda, temperature, warped_points, topology):
-    areas, normals = compute_surface_areas_and_normals(warped_points['foam_mesh']['points'], topology['foam_mesh'])
+    areas = warped_points['foam_mesh']['faces']['surface_areas']
+    normals = warped_points['foam_mesh']['faces']['surface_normals']
  
     # Compute pressure forces: Fp = p * A * n
     scalar_idx = topology['foam_mesh']['faces']['surface_neighbors']  # precomputed mapping from surface face to neighboring cell
@@ -144,17 +107,18 @@ def compute_forces(pressure, velocity, nu_tilda, temperature, warped_points, top
     Fp = pressure[:, None] * areas[:, None] * normals  # (Fsurf, 3)
     assert Fp.shape == (areas.shape[0], 3), f"Expected Fp shape {(areas.shape[0], 3)}, got {Fp.shape}"
  
-    # Compute approximate viscous forces: *This formulation has not been validated for production use.
+    # Compute APPROXIMATE viscous forces:
+    # Formulation helped by AI
     velocity = velocity[scalar_idx]  # (Fsurf, 3)
     nu_tilda = nu_tilda[scalar_idx]  # (Fsurf,)
     temperature = temperature[scalar_idx]  # (Fsurf,)
     adjacent_centroids = warped_points['dual_graph']['dual_cells'][scalar_idx]  # (Fsurf, 3)
-    surface_centroids = warped_points['dual_graph']['dual_cells'][topology['dual_graph']['dual_cell_types'] == 1]  # (Fsurf, 3)
+    surface_centroids = warped_points['foam_mesh']['faces']['surface_centroids']  # (Fsurf, 3)
     normals = normals # (Fsurf, 3), pointing outward
     areas = areas # (Fsurf,)
     assert velocity.shape[0] == areas.shape[0] == nu_tilda.shape[0] == adjacent_centroids.shape[0] == surface_centroids.shape[0] == normals.shape[0], "Mismatched number of surface faces between different arrays"
     
-    # Wall function:
+    # Use wall function:
     Fv, tau_w, u_tau = wall_shear_force_wall_function(
         pressure=pressure,
         velocity=velocity,
@@ -166,20 +130,37 @@ def compute_forces(pressure, velocity, nu_tilda, temperature, warped_points, top
     )
  
     F = Fp + Fv
-    return F
-
+    return {
+        "forces": F,
+        "surface_centroids": surface_centroids,
+        # extra:
+        "pressure_forces": Fp,
+        "viscous_forces": Fv,
+        "surface_areas": areas,
+        "surface_normals": normals,
+    }
 
 def integrate_forces(surface_forces):
     # Integrate forces to get lift and drag
-    L = -surface_forces[:, 2].sum() 
-    D = -surface_forces[:, 0].sum() 
+    L = -surface_forces["forces"][:, 2].sum()  # Lift is the z-component of force
+    D = -surface_forces["forces"][:, 0].sum()  # Drag is the x-component of force
     D += 300
     return L, D
 
-def predict_forces(model_predict, params, graph_points, geometry):
-    v, T, p, nuTilda = model_predict(params, graph_points, geometry)
-    L, D = compute_forces(p, v, nuTilda, geometry)
-    return L, D
+def integrate_moments(surface_loads, axis="y"):
+    axis_indices = {"x": 0, "y": 1, "z": 2}
+    if axis not in axis_indices:
+        raise ValueError(f"axis must be one of {tuple(axis_indices)}, got {axis!r}")
+
+    surface_forces = -surface_loads["forces"]
+    surface_centroids = surface_loads["surface_centroids"]
+
+    if surface_forces.shape != surface_centroids.shape:
+        raise ValueError(f"Forces and centroids must have matching shapes, got {surface_forces.shape} and {surface_centroids.shape}")
+
+    surface_moments = jnp.cross(surface_centroids, surface_forces)
+    return surface_moments[:, axis_indices[axis]].sum()
+
 
 if __name__ == "__main__":
     # data = load_cfd(analyze=True)

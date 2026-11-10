@@ -1,0 +1,11 @@
+site_name: AeroDML
+site_url: https://lsdolab.github.io/AeroDML/
+repo_url: https://github.com/LSDOlab/AeroDML
+docs_dir: docs
+theme:
+  name: readthedocs
+nav:
+  - Overview: index.md
+  - Package and model: package.md
+  - Data generation and training: training.md
+  - Optimization: mdo.md

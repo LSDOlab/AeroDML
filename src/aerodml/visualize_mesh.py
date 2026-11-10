@@ -13,13 +13,18 @@ available_cameras = {
         'view_angle': 30,
         'clipping_range': (1.71497, 1714.97),
     },
+    'pos_3d_paper':{
+        'position': [(-9.9864, 53.1927, 76.8637), (17.9115, 6.19638, 9.85092), (0.292775, -0.721282, 0.627723)],
+        'view_angle': 30,
+        'clipping_range': (46.2828, 160.848),
+    },
     'TE':{
         'position': [(50.5074, 30.5439, 9.23596), (24.6976, 12.6643, -1.97501), (-0.292625, -0.167857, 0.941379)],
         'view_angle': 30,
         'clipping_range': (1.81682, 1816.82),
     },
     'TE_underside':{
-        'position': [(33.1122, 36.44, -24.4051), (28.8866, 19.0919, 3.74982), (-0.973712, 0.227708, -0.00583269)],
+        'position': [(28.3078, 28.8334, -27.9519), (23.4037, 19.3806, 3.64087), (-0.860059, 0.509839, 0.0190424)],
         'view_angle': 30,
         'clipping_range': (1.60824, 1608.24),
     }
@@ -47,26 +52,29 @@ def get_cam_angle(p):
     print(f"p.camera.clipping_range = {tuple(float(f'{x:.6g}') for x in p.camera.clipping_range)}")
     print(f"p.window_size = [{w}, {h}]")
 
-def visualize_dual(dual_dict:dict, foam_mesh:dict):
-    pts = foam_mesh["points"]                    # (nPoints, 3)
-    face_pts = foam_mesh["faces"]["points"]      # list/array: face -> point indices
-    ftype = foam_mesh["faces"]["type"]           # (nFaces,)
+def visualize_dual(dual_dict: dict, foam_mesh: dict):
+    p = pv.Plotter()
+    visualize_dual_inplace(dual_dict, foam_mesh, p)
+    p.show()
+
+
+def visualize_dual_inplace(dual_dict: dict, foam_mesh: dict, p):
+    pts = foam_mesh["points"]
+    face_pts = foam_mesh["faces"]["points"]
+    ftype = foam_mesh["faces"]["type"]
     nFaces = foam_mesh["faces"]["nFaces"]
 
-    X = dual_dict["dual_cells"]                  # (nDual, 3)
-    ctype = dual_dict["dual_cell_types"]         # (nDual,)
-    E = dual_dict["dual_edges"]                  # (nFaces, 2)
+    X = dual_dict["dual_cells"]
+    ctype = dual_dict["dual_cell_types"]
+    E = dual_dict["dual_edges"]
     n_real = dual_dict["num_real_cells"]
 
-    # ---- boundary mask 
     bmask = ftype > 0
 
-    # ---- ghost points (should be at face centers)
     ghost_mask = np.arange(X.shape[0]) >= n_real
     ghost_pts = pv.PolyData(X[ghost_mask])
-    ghost_pts["code"] = ctype[ghost_mask]  # 1,2,3
+    ghost_pts["code"] = ctype[ghost_mask]
 
-    # ---- arrows: owner -> ghost(face center)
     u = E[bmask, 0]
     v = E[bmask, 1]
     starts = X[u]
@@ -74,13 +82,10 @@ def visualize_dual(dual_dict:dict, foam_mesh:dict):
 
     arrows_src = pv.PolyData(starts)
     arrows_src["vec"] = vecs
-    # arrows_src["mag"] = np.linalg.norm(vecs, axis=1).astype(np.float32)
-    arrows_src["mag"] = 0.5*np.ones(vecs.shape[0], dtype=np.float32)  # fixed length for better visualization
+    arrows_src["mag"] = 0.5 * np.ones(vecs.shape[0], dtype=np.float32)
     arrows_src["code"] = ftype[bmask].astype(np.int16)
     arrows = arrows_src.glyph(orient="vec", scale="mag", factor=1.0, geom=pv.Arrow())
 
-    # ---- boundary faces as polygons
-    # Build a PolyData from faces: each face is [n, i0, i1, ...]
     faces = []
     face_codes = []
     for fi in range(nFaces):
@@ -93,126 +98,107 @@ def visualize_dual(dual_dict:dict, foam_mesh:dict):
     bfaces = pv.PolyData(pts, np.concatenate(faces))
     bfaces["code"] = np.asarray(face_codes, dtype=np.int16)
 
-    # ---- plot (separate from your original mesh)
-    p = pv.Plotter()
-    p.add_mesh(bfaces, scalars="code", categories=True,
-               cmap=["red", "dodgerblue", "limegreen"],  # 1,2,3
-               show_edges=True, opacity=0.35,
-               scalar_bar_args={"title": "face code"})
-    p.add_mesh(ghost_pts, scalars="code", categories=True,
-               cmap=["red", "dodgerblue", "limegreen"],
-               render_points_as_spheres=True, point_size=1.0)
-    # p.add_mesh(arrows, scalars="code", categories=True,
-    #            cmap=["red", "dodgerblue", "limegreen"])
+    p.add_mesh(bfaces, scalars="code", categories=True, cmap=["red", "dodgerblue", "limegreen"], show_edges=True, opacity=0.35, scalar_bar_args={"title": "face code"})
+    p.add_mesh(ghost_pts, scalars="code", categories=True, cmap=["red", "dodgerblue", "limegreen"], render_points_as_spheres=True, point_size=1.0)
+    # p.add_mesh(arrows, scalars="code", categories=True, cmap=["red", "dodgerblue", "limegreen"])
     p.add_legend([("1 wall", "red"), ("2 freestream", "dodgerblue"), ("3 symmetry", "limegreen")])
-    # p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.025)
-    # p.show()
 
-    # Visualize random edges:
-    pts = foam_mesh["points"]
-    face_pts = foam_mesh["faces"]["points"]
     owner = foam_mesh["faces"]["owner"]
     neigh = foam_mesh["faces"].get("neighbour", [])
-    etype = foam_mesh["faces"]["type"]
     et = dual_dict["dual_edge_types"]
     k, seed, arrow_factor = 25, 0, 0.8
     rng = np.random.default_rng(seed)
     cells = rng.choice(n_real, size=min(k, n_real), replace=False)
 
-    # p = pv.Plotter()
     for c in cells:
-        # faces incident to cell c (owner==c OR neighbour==c)
         fids = np.flatnonzero(owner == c)
         if len(neigh):
             fids = np.unique(np.r_[fids, np.flatnonzero(np.asarray(neigh) == c)])
 
-        # cell surface as those faces
         faces = [np.r_[len(face_pts[f]), np.asarray(face_pts[f], dtype=np.int64)] for f in fids]
         cell_surf = pv.PolyData(pts, np.concatenate(faces))
         p.add_mesh(cell_surf, color="white", opacity=0.25, show_edges=True)
 
-        # dual node point (centroid)
-        cent = pv.PolyData(X[c:c+1]).glyph(geom=pv.Sphere(radius=0.01))
+        cent = pv.PolyData(X[c:c + 1]).glyph(geom=pv.Sphere(radius=0.01))
         p.add_mesh(cent, color="yellow")
 
-        # incident dual edges as arrows from centroid to the other node
         em = np.flatnonzero((E[:, 0] == c) | (E[:, 1] == c))
         others = np.where(E[em, 0] == c, E[em, 1], E[em, 0])
-        starts = np.repeat(X[c:c+1], len(others), axis=0)
+        starts = np.repeat(X[c:c + 1], len(others), axis=0)
         vecs = X[others] - starts
 
         src = pv.PolyData(starts)
         src["vec"] = vecs
         src["mag"] = np.linalg.norm(vecs, axis=1).astype(np.float32)
-        src["code"] = et[em].astype(np.int16)  # 0 internal, 1/2/3 boundary types
+        src["code"] = et[em].astype(np.int16)
         arrows = src.glyph(orient="vec", scale="mag", factor=arrow_factor, geom=pv.Arrow())
-        p.add_mesh(arrows, scalars="code", categories=True,
-                   cmap=["lightgray", "red", "dodgerblue", "limegreen"])
+        p.add_mesh(arrows, scalars="code", categories=True, cmap=["lightgray", "red", "dodgerblue", "limegreen"])
 
-    p.add_legend([("0 internal", "lightgray"),
-                  ("1 wall", "red"), ("2 freestream", "dodgerblue"), ("3 symmetry", "limegreen")])
+    p.add_legend([("0 internal", "lightgray"), ("1 wall", "red"), ("2 freestream", "dodgerblue"), ("3 symmetry", "limegreen")])
+    p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.0025)
+
+def visualize_coarse(coarse_dict: dict, dual_dict: dict, mesh_dict):
+    p = pv.Plotter()
+    visualize_coarse_inplace(coarse_dict, dual_dict, mesh_dict, p)
+    p.show()
+
+    p = pv.Plotter()
+    X = np.asarray(coarse_dict["dual_cells"])
+    vec = X - X[coarse_dict["closest_wall_id"]]
+    sdf = np.linalg.norm(vec, axis=1)
+    mesh = pv.PolyData(X)
+    mesh["sdf"] = sdf
+    p.add_mesh(mesh, scalars="sdf", cmap="viridis", show_edges=False, render_points_as_spheres=True, point_size=5)
     p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.0025)
     p.show()
 
-def visualize_coarse(coarse_dict: dict, dual_dict: dict, mesh_dict):
-    X = np.asarray(coarse_dict["dual_cells"])                  # (K,3)
-    E = np.asarray(coarse_dict["dual_edges"], dtype=np.int64)  # (nE,2)
 
-    # Build the vtk "lines" array: [2,u0,v0, 2,u1,v1, ...]
+def visualize_coarse_inplace(coarse_dict: dict, dual_dict: dict, mesh_dict, p):
+    visualize_coarse_graph_inplace(coarse_dict, p)
+
+    visualize_surface(
+        {"foam_mesh": mesh_dict},
+        {"foam_mesh": mesh_dict},
+        None,
+        title=None,
+        p=p,
+        enable_picking=False,
+        show_scalar_bar=False,
+        smooth_scalars=True,
+        add_axes=False,
+    )
+
+    y_inverted_pts = mesh_dict["points"].copy()
+    y_inverted_pts[:, 1] *= -1
+
+    visualize_surface(
+        {"foam_mesh": mesh_dict},
+        {"foam_mesh": {"points": y_inverted_pts}},
+        None,
+        title=None,
+        p=p,
+        enable_picking=False,
+        show_scalar_bar=False,
+        smooth_scalars=True,
+        add_axes=False,
+    )
+
+    p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.0025)
+    return p
+
+
+def visualize_coarse_graph_inplace(coarse_topology: dict, coarse_cells, p):
+    X = np.asarray(coarse_cells)
+    E = np.asarray(coarse_topology["dual_edges"], dtype=np.int64)
+
     lines = np.hstack([np.full((E.shape[0], 1), 2, dtype=np.int64), E]).ravel()
 
     edge_mesh = pv.PolyData(X)
-    edge_mesh.lines = lines 
+    edge_mesh.lines = lines
 
-    p = pv.Plotter()
     p.add_mesh(edge_mesh, color="grey", line_width=1)
-
-    # add points for nodes
     p.add_mesh(pv.PolyData(X), color="black", render_points_as_spheres=True, point_size=5)
-
-    # plot the actual faces from the original mesh, colored by type
-    # _visualize_mesh(mesh_dict, p)
-    p=visualize_surface(
-        {'foam_mesh': mesh_dict},
-        {'foam_mesh': mesh_dict},
-        None,
-        title=None,
-        p=p,
-        enable_picking=False,
-        show_scalar_bar=False,
-        smooth_scalars=True,
-        add_axes=False,
-    )
-    y_inverted_pts = mesh_dict['points'].copy()
-    y_inverted_pts[:, 1] *= -1
-    pts2 = {'foam_mesh': {'points': y_inverted_pts}}
-    p=visualize_surface(
-        {'foam_mesh': mesh_dict},
-        pts2,
-        None,
-        title=None,
-        p=p,
-        enable_picking=False,
-        show_scalar_bar=False,
-        smooth_scalars=True,
-        add_axes=False,
-    )
-
-    p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.0025)
-    p.show()
-
-    # Second plot showing all nodes (including ghost) colored by SDF
-    p = pv.Plotter()
-    points = X
-    vec = X-X[coarse_dict['closest_wall_id']]
-    sdf = np.linalg.norm(vec, axis=1)
-    mesh = pv.PolyData(points)
-    mesh["sdf"] = sdf
-    p.add_mesh(mesh, scalars="sdf", cmap="viridis", show_edges=False, render_points_as_spheres=True, point_size=5)
-
-    # plot the actual faces from the original mesh, colored by type
-    p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.0025)
-    p.show() 
+    return p
 
 def visualize_graph_hierarchy(topology:dict, geometry:dict, title="Graph hierarchy"):
     M = 300
@@ -369,14 +355,27 @@ def visualize_surface(
         lighting=None,
         show_scalar_bar=True,
         smooth_scalars=False,
+        contour_levels=None,
+        contour_line_width=2.0,
+        filled=True,
         add_axes=True,
+        categories=True,
+        return_actor=False,
     ):
     if p is None:
         p = pv.Plotter()
-    _visualize_surface(p, topology, pts, scalars, cmap, clim, lighting=lighting,show_scalar_bar=show_scalar_bar, smooth_scalars=smooth_scalars)
-    p.camera_position = available_cameras[camera]['position']
-    p.camera.view_angle = available_cameras[camera]['view_angle']
-    p.camera.clipping_range = available_cameras[camera]['clipping_range']
+    surface_actor = _visualize_surface(
+        p, topology, pts, scalars, cmap, clim, lighting=lighting,
+        show_scalar_bar=show_scalar_bar, smooth_scalars=smooth_scalars,
+        contour_levels=contour_levels,
+        contour_line_width=contour_line_width,
+        filled=filled,
+        categories=categories,
+    )
+    if camera is not None:
+        p.camera_position = available_cameras[camera]['position']
+        p.camera.view_angle = available_cameras[camera]['view_angle']
+        p.camera.clipping_range = available_cameras[camera]['clipping_range']
     if title is not None:
         p.add_title(title, font_size=10)
     if add_axes:
@@ -384,12 +383,14 @@ def visualize_surface(
     p.add_key_event("c", lambda: get_cam_angle(p))
     if enable_picking:
         p.enable_surface_point_picking(callback=lambda pp: set_focal_point(pp, p), show_point=True, tolerance=0.0025)
-    return p
+    return surface_actor if return_actor else p
 
 def _visualize_surface(
         p:pv.Plotter, topology:dict, pts:dict,
         scalars:np.ndarray, cmap="viridis", clim=None,
         lighting=None, show_scalar_bar=True, smooth_scalars=False,
+        contour_levels=None, contour_line_width=2.0, filled=True,
+        categories=True,
     ):
     mask = topology['foam_mesh']['faces']['type'] == 1
     idx  = np.flatnonzero(mask)
@@ -416,13 +417,35 @@ def _visualize_surface(
     else:
         scalars_to_plot = None
 
-    p.add_mesh(mesh, scalars=scalars_to_plot, categories=True,
+    surface_actor = p.add_mesh(mesh, scalars=scalars_to_plot, categories=categories,
             cmap=cmap,  # 1,2,3
             clim=clim,
             show_edges=False,
             lighting=lighting,
             show_scalar_bar =show_scalar_bar,
+            opacity=1.0 if filled else 0.0,
         )
+
+    if scalars_to_plot is not None and contour_levels is not None:
+        contour_mesh = mesh
+        if "field" in contour_mesh.cell_data:
+            contour_mesh = contour_mesh.cell_data_to_point_data(
+                pass_cell_data=False
+            )
+        contours = contour_mesh.contour(
+            isosurfaces=contour_levels, scalars="field"
+        )
+        if contours.n_cells:
+            p.add_mesh(
+                contours,
+                color="black",
+                line_width=contour_line_width,
+                lighting=False,
+                show_scalar_bar=False,
+                pickable=False,
+                render_lines_as_tubes=True,
+            )
+    return surface_actor
     
 def visualize_normals(topology:dict, geometry:dict, title="Normals", camera='pos_2'):
     p = pv.Plotter()

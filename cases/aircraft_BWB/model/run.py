@@ -1,7 +1,7 @@
 import jax
 jax.config.update("jax_enable_x64", False)
 
-import aerodml as adml
+import aerodml as adn
 from aerodml.postprocessing import compute_forces, integrate_forces
 
 import os
@@ -28,6 +28,7 @@ from aerodml.load_mesh import (
 )
 from aerodml.load_panel_data import get_lowfi_panel_mesh, load_lowfi_panel_data
 from aerodml.load_data import load_cfd, load_lowfi_cfd_data
+from aerodml.load_vertices import load_graph_vertex_data
 
 # training
 from aerodml.train import build_residual_function, train_model
@@ -43,9 +44,11 @@ DATA_DIR = CASES_DIR / "datasets" / "BWB" / "data"
 print(f"CASE_DIR: {CASE_DIR}")
 print(f"PARAM_DIR: {PARAM_DIR}")
 
-def load_cfd_data(dir:str, split:str, analyze:bool=False, filter:Callable = None, num_cases:int=None)->dict:
+VALIDATION_CONFIG_IDXS = [2, -2, 5, -5, 9, -9]
+
+def load_cfd_data(dir:str, split:str, analyze:bool=False, filter:Callable = None, num_cases:int=None, file_filter: Callable = None,)->dict:
     print("Retrieving CFD data...")
-    return load_cfd(dir, split, analyze=analyze, filter=filter, num_cases=num_cases)
+    return load_cfd(dir, split, analyze=analyze, filter=filter, num_cases=num_cases, file_filter=file_filter)
 
 def get_graph(path_dir:str, mesh_load_settings:dict=None, dual_load_settings:dict=None, coarse_load_settings:dict=None)->dict:
     # Translates openfoam mesh data into Python arrays then processes them for GNNs
@@ -69,14 +72,16 @@ def main(
         load:bool = True, 
         train:bool = False,
         save:bool = False, 
-        dataset_dir = 'sampling_200',
-        split = 'split_0',
+        dataset_dir = 'sample_dataset',
+        split = 'sample_split',
         load_model_path:str=None,
         as_multifidelity_model:bool = True,
+        custom_vertices:bool = False,
         save_dir_path:str = 'gnn',
         save_training_path:str = "gnn",
         with_pinns:bool = False,
         model_name:str = "",
+        exclude_validation_cases:bool = True,
     ):
     # High-level options
     save_params_path = save_training_path + f'_{save_dir_path}'
@@ -96,6 +101,8 @@ def main(
             init_value=1e-3,
             boundaries_and_scales={
                 30_000: 0.1,
+                # 15_000: 0.1,
+                60_000: 0.1,
             }
         )
         # schedule = 1e-5
@@ -104,8 +111,8 @@ def main(
 
     # schedule = 1e-4
     training_settings = {
-        'pinn_loss':with_pinns, 'max_iter': 65000, 'batch_size': 1,'lr': schedule,
-        'seed':17, 'print_stride': 50, 'device': device, 'save':save_training_path,
+        'pinn_loss':with_pinns, 'max_iter': 70000, 'batch_size': 1,'lr': schedule,
+        'seed':17, 'print_stride': 100, 'device': device, 'save':save_training_path,
     }
 
     # low-fidelity input:
@@ -136,13 +143,15 @@ def main(
     }
 
     # ============= Main Setup and Preprocessing ==============:
-    geometry_topology = get_graph('mesh_639k', mesh_load_settings=mesh_load_settings, dual_load_settings=dual_load_settings, coarse_load_settings=coarse_load_settings)
+    geometry_topology = get_graph(str(HERE / 'mesh_639k'), mesh_load_settings=mesh_load_settings, dual_load_settings=dual_load_settings, coarse_load_settings=coarse_load_settings)
     
     if as_multifidelity_model == 'panel':
+        lowfi_topology = get_lowfi_panel_mesh(f'{HERE}/CONNECTIVITY_NEW.pkl', geometry_topology, lowfi_load_settings)
+
         # lowfi_topology = get_panel_mesh(f'{HERE}/CONNECTIVITY.pkl', geometry_topology, lowfi_load_settings)
-        lowfi_topology = get_lowfi_panel_mesh(f'{HERE}/CONNECTIVITY.pkl', geometry_topology, lowfi_load_settings)
+        # lowfi_topology = get_lowfi_panel_mesh(f'{HERE}/CONNECTIVITY.pkl', geometry_topology, lowfi_load_settings)
     elif as_multifidelity_model == 'euler':
-        lowfi_topology = get_lowfi_CFD_mesh(f'mesh_112k', geometry_topology, mesh_load_settings, dual_load_settings, lowfi_load_settings)
+        lowfi_topology = get_lowfi_CFD_mesh(str(HERE / 'mesh_112k'), geometry_topology, mesh_load_settings, dual_load_settings, lowfi_load_settings)
     elif as_multifidelity_model == False:
         lowfi_topology = None
     else:
@@ -159,7 +168,12 @@ def main(
     dataset_path = f'{DATA_DIR}/{dataset_dir}'
     split_path = f'{dataset_path}/{split}'
     cfd_data = load_cfd_data(dir = f'{dataset_path}/rans', split = split_path, num_cases = None)
-    # cfd_data = load_cfd_data(dir = f'{DATA_DIR}/d0/cfd', split = f'{dataset_path}/{split}', num_cases = None)
+    
+    # custom graph optional
+    if custom_vertices:
+        load_graph_vertex_data(cfd_data, dir = f'{dataset_path}/vertices', split_dir = split_path)
+    
+    # multifidelity model optional
     if as_multifidelity_model == 'panel':
         load_lowfi_panel_data(cfd_data, dir = f'{dataset_path}/panel', split_dir = split_path)
     if as_multifidelity_model == 'euler':
@@ -171,6 +185,9 @@ def main(
         faces = with_pinns, verbose=1, visualize=0, device=device
     )
 
+    # DELETE LATER FOR ABLATION
+    # train_data = train_data[:50] # for ablation, use only 50 training samples
+    # train_data = train_data[:25] # for ablation, use only 25 training samples
     
     res_func = build_residual_function(model)
 
@@ -186,7 +203,7 @@ def main(
     # exit()
 
     if train:
-        params = train_model(model, res_func, params, train_data, test_data, constants, training_settings, param_info)
+        params = train_model(model, res_func, params, train_data, test_data, constants, training_settings, param_info, VALIDATION_CONFIG_IDXS)
     if save:
         # save_params(params, save_dir_path)
         param_info.save(params, save_params_path)
@@ -212,12 +229,70 @@ def main(
     # ===================================================================================================================
     # ============================================ Visualization Preparation ============================================
     # ===================================================================================================================
+    if exclude_validation_cases and 'sample' in dataset_dir:
+        test_data = [config for i, config in enumerate(test_data) if i not in {idx if idx >= 0 else len(test_data) + idx for idx in VALIDATION_CONFIG_IDXS}]
+    
     test_data = sorted(test_data, key=lambda x: int(x['case_id']))
     train_data = sorted(train_data, key=lambda x: int(x['case_id']))
 
     model_eval = jax.jit(lambda p,x,y: model(p,x,y,topology), device=constants['device'])
 
+    # fake model of inputs only
+    # from aerodml.utils import stack_func, normalize
+    # stacked_normalize = stack_func(normalize, in_axes=(0, None, None))
+    # def model_eval(p, x, y):
+    #     u = y['low_fidelity_inputs']['U'][topology['dual_graph']['dual_cell_types'] == 0]
+    #     t = y['low_fidelity_inputs']['T'][topology['dual_graph']['dual_cell_types'] == 0]
+    #     p = y['low_fidelity_inputs']['p'][topology['dual_graph']['dual_cell_types'] == 0]
+    #     nuTilda = y['low_fidelity_inputs']['nuTilda'][topology['dual_graph']['dual_cell_types'] == 0]
+    #     u = stacked_normalize(u, constants['v']['mean'], constants['v']['std'])
+    #     t = stacked_normalize(t, constants['T']['mean'], constants['T']['std'])
+    #     p = stacked_normalize(p, constants['p']['mean'], constants['p']['std'])
+    #     nuTilda = stacked_normalize(nuTilda, constants['nuTilda']['mean'], constants['nuTilda']['std'])
+    #     return u, t, p, nuTilda
+
+    # fake model of corrections
+    # model_eval_r = jax.jit(lambda p,x,y: model(p,x,y,topology), device=constants['device'])
+    # def model_eval(p, x, y):
+    #     u_corr, t_corr, p_corr, nuTilda_corr = model_eval_r(p, x, y)
+
+    #     mask = topology['dual_graph']['dual_cell_types'] == 0
+
+    #     u_base = y['low_fidelity_inputs']['U'][mask]
+    #     t_base = y['low_fidelity_inputs']['T'][mask]
+    #     p_base = y['low_fidelity_inputs']['p'][mask]
+    #     nuTilda_base = y['low_fidelity_inputs']['nuTilda'][mask]
+
+    #     u_base_norm = stacked_normalize(u_base, constants['v']['mean'], constants['v']['std'])
+    #     t_base_norm = stacked_normalize(t_base, constants['T']['mean'], constants['T']['std'])
+    #     p_base_norm = stacked_normalize(p_base, constants['p']['mean'], constants['p']['std'])
+    #     nuTilda_base_norm = stacked_normalize(nuTilda_base, constants['nuTilda']['mean'], constants['nuTilda']['std'])
+
+    #     u_delta_phys = (u_corr - u_base_norm) * constants['v']['std']
+    #     t_delta_phys = (t_corr - t_base_norm) * constants['T']['std']
+    #     p_delta_phys = (p_corr - p_base_norm) * constants['p']['std']
+    #     nuTilda_delta_phys = (nuTilda_corr - nuTilda_base_norm) * constants['nuTilda']['std']
+
+    #     return (
+    #         stacked_normalize(u_delta_phys, constants['v']['mean'], constants['v']['std']),
+    #         stacked_normalize(t_delta_phys, constants['T']['mean'], constants['T']['std']),
+    #         stacked_normalize(p_delta_phys, constants['p']['mean'], constants['p']['std']),
+    #         stacked_normalize(nuTilda_delta_phys, constants['nuTilda']['mean'], constants['nuTilda']['std']),
+    #     )
+    
+    # model_eval = lambda p,x,y: model(p,x,y,topology)
+    # vid_data = test_data
+    # vid_data = [vid_data[0]]
+
     vid_data = sorted(train_data, key=lambda x: int(x['case_id'])) + sorted(test_data, key=lambda x: int(x['case_id']))
+    # vid_data = sorted(test_data, key=lambda x: int(x['case_id']))
+
+    # only first 5 items in vid_data
+    # vid_data = vid_data[:5]
+    # vid_data = vid_data[-5:]
+
+    # vid_data = [item for item in vid_data if int(item['case_id']) == 0]
+    # vid_data = [train_data[0], train_data[1]]
     topology = vid_data[0]['topology']
     # ===================================================================================================================
     # ============================================ Visualization Preparation ============================================
@@ -230,16 +305,70 @@ def main(
     from aerodml.postprocessing_viz import analyze_training, analyze_pde_errors
     res_func_full = build_residual_function(model, return_full_residuals=True)
     res_func_full_jit = jax.jit(lambda d,f,x: res_func_full(params,d,f,x, topology, constants), device=constants['device'])
-    # analyze_training(model_eval, res_func_full_jit, params, train_data, test_data, constants)
-    # analyze_pde_errors(model_eval, res_func_full, params, train_data, test_data, constants)
-    # analyze_loss(model_eval, params, train_data, test_data, constants)
-    # exit()
 
     # =========================== Visualize Force Error Histogram =========================== 
     from aerodml.postprocessing_viz import plot_case_histogram, analyze_aero_forces #, analyze_model
-    # # plot_case_histogram(model_eval, params, vid_data, constants)
-    # # analyze_model(model_eval, params, vid_data, constants, screenshot=True)
-    analyze_aero_forces(model_eval, params, vid_data, constants, screenshot=True, model_name=model_name)
+    analyze_aero_forces(model_eval, params, vid_data, constants, screenshot=True, model_name=model_name,full_analysis=True)
+    return
+
+    #================= EXTRA VISUALIZATIONS=================
+    from aerodml.postprocessing_viz import plot_surface_comparison, plot_xc, XCWindow
+
+    # =========================== Visualize OPTIMIZATION COMPARISONS ===========================
+    # last_data_point = max(vid_data, key=lambda c: int(c['case_id']))
+    xc_window_5 = XCWindow(plane = ('y', (0,5,0)), center = 'auto')
+    xc_window_16 = XCWindow(plane = ('y', (0,16,0)), center = 'auto')
+    # if '_panel_' in model_name:
+    #     plot_surface_comparison(
+    #         model_eval, params, last_data_point, constants, screenshot=True, model_name=model_name,
+    #         left='low-fidelity', right='CFD', panel_data=max(cfd_data, key=lambda c: int(c['case_id']))['low_fidelity_data'], panel_topology=lowfi_topology['topology'], smooth_scalars = True,
+    #         cross_section_stations = [xc_window_5, xc_window_16],
+    #     )
+    # else:
+    #     plot_surface_comparison(
+    #         model_eval, params, last_data_point, constants, screenshot=True, model_name=model_name,
+    #         left='NN', right='CFD', smooth_scalars = True,
+    #         cross_section_stations = [xc_window_5, xc_window_16],
+    #     )
+
+    # =========================== Visualize paper comparison fields ===========================
+    from aerodml.postprocessing_viz import plot_field
+    from aerodml.visualize_mesh import build_pyvista_mesh_topology
+    pv_mesh = build_pyvista_mesh_topology(topology['foam_mesh'])
+    sorted_test_data = sorted(test_data, key=lambda x: int(x['case_id']))
+    # sorted_test_data = [item for item in sorted_test_data if int(item['case_id']) in [296]]
+
+    camera = 'pos_3d_paper'
+    for state in ['Ma', 'p']:
+        for test_data_point in sorted_test_data:
+            for model_type in ['CFD', 'NN', 'error']:
+                if model_type == 'error':
+                    cmap = 'coolwarm'
+                else:
+                    cmap = 'jet'
+
+                if state == 'Ma':
+                    # contour_levels = [0.75, 1.0]
+                    contour_levels = 10
+                else:
+                    contour_levels = 5
+                contour_levels = None
+
+                plot_field(
+                    model_eval, params, test_data_point, constants, screenshot=True, model_name=model_name,
+                    model_type=model_type, smooth_scalars = True,
+                    pyvista_mesh_topology=pv_mesh,
+                    state = state, camera = camera,
+                    cross_section_stations = [xc_window_16],
+                    parallel_projection=False,
+                    lighting=True,
+                    cmap=cmap,
+                    contour_levels=contour_levels,
+                    # contour_labels=True,
+                    # grid_2d=True
+                )
+
+    return
 
     # =========================== Visualize surfaces single =========================== 
     # from visualize_mesh import build_pyvista_mesh_topology
@@ -255,21 +384,23 @@ def main(
     from aerodml.visualize_mesh import build_pyvista_mesh_topology
     pv_mesh = build_pyvista_mesh_topology(topology['foam_mesh'])
     # =========================== Visualize PAPER FIGURES =========================== 
-    # from aerodml.postprocessing_viz import visualize_paper
-    # state, camera= 'p', 'pos_2'
-    # # state, camera= 'T', 'pos_2'
-    # # state, camera= 'v', 'pos_2'
-    # for config in vid_data:
-    #     print(f"Creating case id {config['case_id']} figures ...")
-    #     from pathlib import Path
-    #     save_dir = Path(f'paper_field_plots/{model_name}/case_{config["case_id"]}')
-    #     save_dir.mkdir(parents=True, exist_ok=True)
-    #     visualize_paper(
-    #         model_eval, params, config, constants, save_dir, state=state,
-    #         window_size=(993, 960), return_image=False, enable_picking=False, pyvista_mesh_topology=pv_mesh,
-    #         camera = camera)
+    from aerodml.postprocessing_viz import visualize_paper
+    state, camera= 'p', 'pos_2'
+    # state, camera= 'T', 'pos_2'
+    # state, camera= 'v', 'pos_2'
 
-    # exit()
+    vid_data = sorted(test_data, key=lambda x: int(x['case_id']))
+    for config in vid_data:
+        print(f"Creating case id {config['case_id']} figures ...")
+        from pathlib import Path
+        save_dir = Path(f'paper_field_plots/{model_name}/case_{config["case_id"]}')
+        save_dir.mkdir(parents=True, exist_ok=True)
+        visualize_paper(
+            model_eval, params, config, constants, save_dir, state=state,
+            window_size=(993, 960), return_image=False, enable_picking=False, pyvista_mesh_topology=pv_mesh,
+            camera = camera)
+
+    return
     # =========================== Visualize surface video =========================== 
     images = []
     # state, camera = 'v', 'TE'
@@ -301,30 +432,3 @@ def main(
             # Ensure uint8
             img = np.asarray(img, dtype=np.uint8)
             writer.append_data(img)
-
-if __name__ == "__main__":
-    # ============================ Important Script Flags ============================:
-    #                                               # Uncomment a line to:
-    # load, train, save = False, True, True         # Train from scratch
-    # load, train, save = True, True, True          # Train from existing0
-    load, train, save = True, False, False        # Load results
-    # load, train, save = False, False, False       # Load untrained model (for debugging)
-
-    # DATA-ONLY MODEL:
-    load_model_path = 'RANS_GNN_tune_sample_b_TEMP_BEST_61391.pickle'
-    model_name = 'RANS-GNN'
-    as_multifidelity_model = False
-    dataset_dir, split = 'sample_case', 'split_0'
-
-    main(
-        load=load, 
-        train=train, 
-        save=save, 
-        dataset_dir = dataset_dir,
-        split = split,
-        load_model_path=load_model_path,
-        save_training_path='DEL',
-        as_multifidelity_model=as_multifidelity_model,
-        with_pinns=False,
-        model_name=model_name
-    )

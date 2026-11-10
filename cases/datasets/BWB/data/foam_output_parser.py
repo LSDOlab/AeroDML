@@ -39,6 +39,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
+# -----------------------------------------------------------------------------
+# Defaults you may want to edit
+# -----------------------------------------------------------------------------
 
 SUMMARY_JSON_NAME = "parsed_case_summary.json"
 PLOTS_DIR_NAME = "parser_plots"
@@ -46,6 +49,11 @@ SCHEMA_VERSION = 1
 
 # Residual variables to plot if they appear in the logs.
 RESIDUAL_FIELDS_TO_PLOT = ("p", "U0", "U1", "U2", "nuTilda", "he", "T")
+
+
+# -----------------------------------------------------------------------------
+# Regex patterns for parsing log lines
+# -----------------------------------------------------------------------------
 
 FLOAT = r"[+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][+-]?\d+)?|nan|inf)"
 
@@ -97,6 +105,11 @@ NAN_COUNT_RE = re.compile(
 EVAL_TIME_RE = re.compile(
     r"Simulation\s+(?P<case>\d+)\s+evaluation time:\s+"
     r"(?P<seconds>" + FLOAT + r")",
+    re.IGNORECASE,
+)
+
+ZERO_VOLUME_CELLS_RE = re.compile(
+    r"Writing\s+(?P<count>\d+)\s+zero volume cells\s+to set zeroVolumeCells",
     re.IGNORECASE,
 )
 
@@ -262,6 +275,9 @@ def empty_case(case_id: int) -> Dict[str, Any]:
         "log_nan_count_total": 0,
         "log_nan_counts": [],
 
+        # Mesh-quality information used only for terminal reporting.
+        "zero_volume_cell_count": 0,
+
         # Values from the final "Saved data to ..." line.
         "saved_lift": None,
         "saved_drag": None,
@@ -351,6 +367,15 @@ def parse_log_text(text: str, case_id: int) -> Dict[str, Any]:
             count = int(match.group("count"))
             case["log_nan_counts"].append(count)
             case["log_nan_count_total"] += count
+            continue
+
+        # Zero-volume cells from the mesh-quality check.
+        match = ZERO_VOLUME_CELLS_RE.search(line)
+        if match:
+            case["zero_volume_cell_count"] = max(
+                case["zero_volume_cell_count"],
+                int(match.group("count")),
+            )
             continue
 
         # Final saved values.
@@ -518,35 +543,66 @@ def format_table_value(value: Any, width: int = 12, precision: int = 5) -> str:
     return str(value).rjust(width)
 
 
-def print_case_table(summaries: List[Dict[str, Any]], title: str = "Parsed case summary") -> None:
-    """Print a compact terminal table like the original script did."""
+def print_case_table(
+    summaries: List[Dict[str, Any]],
+    title: str = "Parsed case summary",
+    zero_volume_counts: Optional[Dict[int, int]] = None,
+) -> None:
+    """Print a compact terminal table with every final solver residual found."""
     if not summaries:
         print(f"\n{title}: no cases to show")
         return
 
-    print(f"\n{title}")
-    print("-" * 132)
-    print(
-        f"{'case':>5}  {'iters':>6}  {'lastTime':>8}  {'nans':>5}  {'conv':>4}  "
-        f"{'final Cl':>12}  {'final Cd':>12}  {'final L':>14}  {'final D':>14}  {'p finalRes':>12}"
+    zero_volume_counts = zero_volume_counts or {}
+    residual_vars = sorted(
+        {
+            var
+            for summary in summaries
+            for var in summary.get("final_solver_residuals", {})
+        }
     )
-    print("-" * 132)
+    residual_widths = {
+        var: max(12, len(f"{var} finalRes"))
+        for var in residual_vars
+    }
+
+    base_header = (
+        f"{'case':>5}  {'iters':>6}  {'lastTime':>8}  {'nans':>5}  {'conv':>4}  "
+        f"{'zeroVol':>7}  {'final Cl':>12}  {'final Cd':>12}  "
+        f"{'final L':>14}  {'final D':>14}"
+    )
+    residual_header = "".join(
+        f"  {f'{var} finalRes':>{residual_widths[var]}}"
+        for var in residual_vars
+    )
+    table_width = len(base_header + residual_header)
+
+    print(f"\n{title}")
+    print("-" * table_width)
+    print(base_header + residual_header)
+    print("-" * table_width)
 
     for summary in summaries:
-        print(
+        row = (
             f"{summary['case']:5d}  "
             f"{summary['n_iterations']:6d}  "
             f"{format_table_value(summary.get('last_openfoam_time'), 8, 5)}  "
             f"{str(summary.get('nans_exist')):>5}  "
             f"{format_table_value(summary.get('converged'), 4)}  "
+            f"{format_table_value(zero_volume_counts.get(summary['case'], 0), 7)}  "
             f"{format_table_value(summary.get('final_Cl'))}  "
             f"{format_table_value(summary.get('final_Cd'))}  "
             f"{format_table_value(summary.get('final_L'), 14)}  "
-            f"{format_table_value(summary.get('final_D'), 14)}  "
-            f"{format_table_value(summary.get('p_final_residual'))}"
+            f"{format_table_value(summary.get('final_D'), 14)}"
         )
+        final_residuals = summary.get("final_solver_residuals", {})
+        row += "".join(
+            f"  {format_table_value(final_residuals.get(var), residual_widths[var])}"
+            for var in residual_vars
+        )
+        print(row)
 
-    print("-" * 132)
+    print("-" * table_width)
 
 
 # -----------------------------------------------------------------------------
@@ -960,7 +1016,11 @@ def parse_cfd_case_directory(
     with output_json_path.open("w") as file:
         json.dump(summaries, file, indent=2)
 
-    excluded_plot_case_ids: List[int] = []
+    excluded_plot_case_ids = [
+        case["case"]
+        for case in cases
+        if not case_is_safe_for_plots(case, residual_plot_max)
+    ]
     if make_plots:
         excluded_plot_case_ids = make_parser_plots(
             cases=cases,
@@ -970,22 +1030,39 @@ def parse_cfd_case_directory(
         )
 
     if print_summary:
-        print_case_table(summaries, title="Parsed case summary")
+        excluded_case_id_set = set(excluded_plot_case_ids)
+        good_summaries = [
+            summary for summary in summaries
+            if summary["case"] not in excluded_case_id_set
+        ]
+        bad_summaries = [
+            summary for summary in summaries
+            if summary["case"] in excluded_case_id_set
+        ]
+        zero_volume_counts = {
+            case["case"]: case.get("zero_volume_cell_count", 0)
+            for case in cases
+        }
 
-        if make_plots:
-            if excluded_plot_case_ids:
-                excluded_summaries = [
-                    summary for summary in summaries
-                    if summary["case"] in set(excluded_plot_case_ids)
-                ]
-                print(
-                    f"\nExcluded {len(excluded_plot_case_ids)} case(s) from plots "
-                    f"because a final solver residual was above {residual_plot_max}: "
-                    f"{excluded_plot_case_ids}"
-                )
-                print_case_table(excluded_summaries, title="Cases excluded from plots")
-            else:
-                print(f"\nNo cases were excluded from plots by residual_plot_max={residual_plot_max}.")
+        print_case_table(
+            good_summaries,
+            title="Good cases (included in plots)",
+            zero_volume_counts=zero_volume_counts,
+        )
+        print_case_table(
+            bad_summaries,
+            title="Bad cases (excluded from plots)",
+            zero_volume_counts=zero_volume_counts,
+        )
+
+        if bad_summaries:
+            print(
+                f"\nExcluded {len(bad_summaries)} case(s) from plots "
+                f"because a final solver residual was above {residual_plot_max}: "
+                f"{excluded_plot_case_ids}"
+            )
+        else:
+            print(f"\nNo cases were excluded from plots by residual_plot_max={residual_plot_max}.")
 
     print(f"\nParsed {len(summaries)} cases.")
     print(f"Wrote JSON summary to: {output_json_path}")
@@ -994,3 +1071,7 @@ def parse_cfd_case_directory(
         print(f"Wrote plots to: {data_dir / plots_dir_name}")
 
     return summaries
+
+
+if __name__ == "__main__":
+    parse_cfd_case_directory()

@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --job-name=dafoam_rans
+#SBATCH --nodes=1
+#SBATCH --ntasks=28
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=64G
+#SBATCH --time=24:00:00
+#SBATCH --output=slurm-%j.out
+# Supply --account, --partition, and optional --qos to sbatch for your cluster.
+
+set -e
+# Activate a configured environment; initialize conda and any required modules before submission.
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate YOUR_ENV_NAME
+
+# Submit from cases/datasets/BWB with the OpenFOAM/DAFoam environment configured.
+# Prepare processor*/9999 warm-start fields using the same MPI rank count first.
+# This regenerates (and may overwrite) the three bundled CFD sample outputs.
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+bash batch_rans.sh "$SLURM_NTASKS" data/sample_dataset mesh_639k
