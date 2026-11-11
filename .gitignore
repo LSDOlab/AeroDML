@@ -420,3 +420,4 @@ logs/
 # Generated figures and postprocessing plots
 figures/
 post_processing_plots/
+/cases/aircraft_BWB/mdo/visualize_sweeps/output/

@@ -26,6 +26,7 @@ def main():
             custom_vertices=False, model_name=f"sample_{name}_gnn",
             exclude_validation_cases=False,
         )
+    exit()
 
     # ==================== Create comparison plot similar to the one in the readme ====================
     root = Path(__file__).resolve().parent / "post_processing_plots"
