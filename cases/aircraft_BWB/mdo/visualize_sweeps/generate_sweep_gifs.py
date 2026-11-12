@@ -2,7 +2,8 @@
 
 Run this file from any directory in the aerodml environment. Edit settings below;
 there are no command-line arguments. Model paths, devices and freestream settings
-come from the parent mdo modules. No gradients are evaluated.
+come from the parent mdo modules. No gradients are evaluated. Each frame JSON
+also records full-aircraft lift, drag and y-axis pitching moment in SI units.
 """
 from pathlib import Path
 import importlib
@@ -176,7 +177,24 @@ def evaluate_nn(model, volume_points, pitch, lowfi_data=None):
             to_device(volume_points), to_device(pitch),
             lowfi_data=jax.tree.map(to_device, lowfi_data),
         )
-        return jax.device_get(result[-1])
+        return jax.device_get((result[:3], result[-1]))
+
+
+def save_loads(folder, model_name, frame_id, loads):
+    """Persist full-aircraft loads before plotting, preserving frame metadata."""
+    values = {key: float(np.asarray(value).item())
+              for key, value in zip(("lift_N", "drag_N", "pitching_moment_N_m"), loads)}
+    if not all(np.isfinite(value) for value in values.values()):
+        raise ValueError(f"{model_name}: nonfinite loads in frame {frame_id}")
+    values.update({
+        "aircraft_extent": "full",
+        "moment_axis": "y",
+        "drag_type": "induced" if model_name == "panel" else "pressure_and_viscous",
+    })
+    path = folder / f"{model_name}_{frame_id:04d}.json"
+    metadata = json.loads(path.read_text())
+    metadata["aerodynamic_loads"] = values
+    path.write_text(json.dumps(metadata, indent=2) + "\n")
 
 
 def panel_plot_data(panel_functions, points, result, pitch):
@@ -386,10 +404,15 @@ def run_sweeps(models, parameters, sweeps, root, num_frames):
             for name in models:
                 print(f"  Evaluating/rendering {name}", flush=True)
                 if name == "panel":
+                    # Panel outputs already represent the full aircraft.
+                    loads = (panel_result["L"], panel_result["Di"], panel_result["M"][1])
+                    save_loads(folder, name, frame_id, loads)
                     topology, geometry, pressure, mesh = panel_plot_data(panel_functions, panel_points, panel_result, pitch)
                 else:
                     lowfi = None if name == "gnn" else {key: panel_result[key] for key in ("pressure", "velocity")}
-                    result = evaluate_nn(neural_models[name], volume_points, pitch, lowfi)
+                    half_loads, result = evaluate_nn(neural_models[name], volume_points, pitch, lowfi)
+                    # Match the MDO operations: mirror half-aircraft NN loads.
+                    save_loads(folder, name, frame_id, [2 * value for value in half_loads])
                     topology, geometry = base.topology, result["warped_geo"]
                     pressure, mesh = result["p"], volume_mesh
                 if not np.isfinite(pressure).all():

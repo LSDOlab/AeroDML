@@ -3,9 +3,11 @@
 # models. Geometry, plotting and test settings live in generate_sweep_gifs.py.
 set -euo pipefail
 
-CONDA_ENV="aerodml"
-MODELS=(panel gnn pgnn)
-MODELS=(pgnn)
+# Replace with your own conda environment
+# CONDA_ENV="aerodml" 
+CONDA_ENV="official_aerodml"
+
+MODELS=(pgnn panel gnn)
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 for model in "${MODELS[@]}"; do
