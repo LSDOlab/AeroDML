@@ -16,9 +16,9 @@ other configurations.
 
 *Surface and cross-section pressure predictions and errors for the single-fidelity, panel-guided, and Euler-guided GNN models compared with RANS for a sample test case.*
 
-![BWB geometry sweep and aerodynamic load comparison across Panel Method, RANS-GNN, and PG-RANS GNN](assets/bwb_sweep_comparison.gif)
+![BWB geometry sweep and aerodynamic load comparison across Panel Method, RANS-GNN, and PG-RANS GNN](docs/assets/bwb_sweep_comparison.gif)
 
-*Geometry sweeps showing predicted surface pressure fields, cross sections, and aerodynamic coefficients (lift, drag, and moment) across Panel Method (VortexAD), RANS-GNN, and PG-RANS GNN models.*
+*Geometry sweeps showing predicted surface pressure fields, cross sections, and aerodynamic coefficients across Panel Method (VortexAD), RANS-GNN, and PG-RANS GNN models.*
 
 See the [documentation](https://lsdolab.github.io/AeroDML/) for the project
 overview, package and model, data generation and training, and optimization.
