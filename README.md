@@ -12,21 +12,17 @@ inputs to predict RANS flow fields for aircraft design. The application was
 developed for HPC use on a blended-wing-body aircraft and can be adapted to
 other configurations.
 
+![Case 38 pressure comparison: RANS reference, GNN predictions, and prediction errors](docs/assets/pressure_comparison_case_38.png)
+
+*Surface and cross-section pressure predictions and errors for the single-fidelity, panel-guided, and Euler-guided GNN models compared with RANS for a sample test case.*
+
+![BWB geometry sweep and aerodynamic load comparison across Panel Method, RANS-GNN, and PG-RANS GNN](docs/assets/bwb_sweep_comparison.gif)
+
+*Geometry sweeps showing predicted surface pressure fields, cross sections, and aerodynamic coefficients across Panel Method (VortexAD), RANS-GNN, and PG-RANS GNN models.*
+
 See the [documentation](https://lsdolab.github.io/AeroDML/) for the project
 overview, package and model, data generation and training, and optimization.
 The same pages are available in [docs/](docs/index.md).
-
-## Tests
-
-The badge above shows the current GitHub Actions CPU test status. To run the
-suite locally from the repository root with the package installed:
-
-```bash
-JAX_PLATFORMS=cpu python -m unittest discover -s tests -v
-```
-
-These tests cover driver control flow, sample asset selection, and training
-logging. See [tests/README.md](tests/README.md) for coverage and GPU smoke tests.
 
 ## Download release assets
 

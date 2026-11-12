@@ -1,8 +1,9 @@
 # BWB model examples
 
 `run.py` provides the shared model setup, training, and analysis functions.
-Use `evaluate_sample.py --model rans` (or `panel`, `euler`) to evaluate the bundled
-three-case `sample_dataset/sample_split` with the matching paper checkpoint.
+Run `python evaluate_sample.py` to evaluate the bundled three-case
+`sample_dataset/sample_split` with the RANS, panel-guided, and Euler-guided
+paper checkpoints in sequence.
 GPU evaluation requires the project dependencies and a GPU environment.
 
 Use `dashboard.py --model rans` (or `panel`, `euler`) for one paper training history,

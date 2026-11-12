@@ -1,24 +1,25 @@
 # Package and model
 
 The reusable Python package lives in `src/aerodml/`. It handles mesh loading,
-graph construction, the GNN, training, and aerodynamic postprocessing.
-The BWB application driver, `cases/aircraft_BWB/model/run.py`, combines these
-tools with the aircraft's meshes, datasets, and model settings.
+graph construction, the GNN model itself, training, and aerodynamic postprocessing.
+The BWB application script, `cases/aircraft_BWB/model/run.py`, combines these
+functions to perform both training and model analysis.
 
-## From mesh to graph
+## Mesh-derived graph construction
 
 Graph construction is defined in `src/aerodml/load_mesh.py`.
 
 The model works on a graph built from an unstructured CFD volume mesh. Each
 cell center becomes a node, and cells that share a face are connected by an
-edge. Extra boundary nodes sit at wall, farfield, and symmetry face centers
+edge. Extra boundary nodes are added at wall, farfield, and symmetry face centers
 and connect to their neighboring volume cells.
 
 Two coarser graphs are built by clustering nearby connected volume nodes while
 preserving boundary nodes. The mapping between fine and coarse nodes is saved
 for pooling and unpooling. This gives the network three levels for exchanging
 information over both short and long distances. Connectivity is reused across
-cases; node positions and geometric features change with the deformed mesh.
+cases with node positions and geometric features change with the deformed mesh.
+We note that graph coarsening hyperparameters are hard-coded for this specific application and may need to be tuned for different meshes.
 
 Node features describe the input flow state, node type, approximate wall
 distance, and direction to the nearest wall. Wall nodes also carry face area
@@ -29,20 +30,20 @@ and surface normal. Edge features describe direction, length, and boundary type.
 The architecture is defined in `src/aerodml/model.py`, with neural-network
 layers and parameter handling in `src/aerodml/networks.py`.
 
-The network follows a U-shaped path through the three graph levels. Separate
+The network is a U-shaped GNN architecture through the three graph levels. Separate
 encoders turn wall and non-wall features into learned node representations.
 Message passing exchanges information between neighbors, then pooling moves
-that information to the coarser graphs. Learned updates bring it back to the
-fine graph, using saved fine-level information along the way.
+that information to the coarser graphs. Finally, learned update MLPs bring it back to the
+fine graph.
 
 Each message uses the two connected node representations and their edge
-features. Messages travel in both directions and are averaged at each node.
-The node update also uses a global average of the volume-node representations,
-giving it information about the wider flow. Pooling averages nodes within each
-cluster; unpooling combines the coarse representation with the saved fine-level
+features. Messages are passed in both directions and are averaged at each node.
+The node update also includes a global average of the volume-node representations,
+giving it information about the global flow features. Pooling averages nodes within each
+cluster; unpooling combines the coarse graph information with the saved fine-level
 representation through a learned update.
 
-A decoder predicts pressure, three velocity components, and temperature at
+A decoder then predicts pressure, three velocity components, and temperature at
 volume nodes. Aerodynamic postprocessing in `src/aerodml/postprocessing.py`
 computes lift and drag from the predicted fields.
 
@@ -57,7 +58,7 @@ The BWB example has three variants:
 ## Model API and hyperparameters
 
 `get_model()` in `src/aerodml/model.py` returns a prediction function and a
-parameter manager. This example assumes the normalization constants, flow
+parameter managing object. This example assumes the normalization constants, flow
 conditions, graph coordinates, and topology have already been prepared, as in
 `cases/aircraft_BWB/model/run.py`:
 
@@ -102,6 +103,8 @@ The main `model_config` options and their defaults are:
 To train a different architecture, pass the chosen settings to `get_model()`
 in the BWB driver and use the same settings when evaluating its checkpoints.
 
+Graph coarsening heuristic hyperparameters are not included here but are part of the graph construction stage. 
+
 ## Installation
 
 Use Python 3.11 and run from the repository root:
@@ -127,7 +130,7 @@ python package_assets.py
 To evaluate the supplied sample, run from `cases/aircraft_BWB/model/`:
 
 ```bash
-python evaluate_sample.py --model rans
+python evaluate_sample.py
 ```
 
-Choose `panel` or `euler` for the other models.
+This evaluates the RANS, panel-guided, and Euler-guided models in sequence.

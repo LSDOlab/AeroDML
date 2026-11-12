@@ -134,12 +134,16 @@ constants = {
     'v': {      'mean': np.array([202.8, 14.2, -8.01]), 'std': 3*np.array([48.15, 32.3, 44.6]),'ref': v_ref,},
     'rho': {                                                                                   'ref': rho_ref,},
     'R': R, 'gamma': 1.4,
-    # 'gnn_device': jax.devices("cpu")[0],
+
+    # RTX 3060 settings: 
     # 'vol_device': jax.devices("cpu")[0],
     # 'panel_device': jax.devices("cpu")[0],
-    'gnn_device': jax.devices("gpu")[0],
+    # 'gnn_device': jax.devices("gpu")[0],
+
+    # NVIDIA 3090/A40 settings:
     'vol_device': jax.devices("gpu")[0],
     'panel_device': jax.devices("gpu")[0],
+    'gnn_device': jax.devices("gpu")[0],
 }
 
 # Create deformation function
@@ -163,7 +167,7 @@ jax.config.update("jax_enable_x64", False)
 compute_volume_pts, d_compute_volume_pts, aux = build_volume_pts_func(
     foam_mesh, base_volume_points, constants['vol_device'], return_aux = True, print_timings = print_timings,
     cached_routes = os.path.join(dafoam_directory, f"cached_routes_{x_surf_hash}"),
-    progress=False,
+    progress=True,
 )
 unique_wall_points = aux['wall_points']
 wall_faces = aux['wall_faces']
@@ -218,7 +222,8 @@ def build_ml_nn_eval_func(
         p_pred = stacked_unnormalize(p_pred, constants['p']['mean'], constants['p']['std'])
         T_pred = stacked_unnormalize(T_pred, constants['T']['mean'], constants['T']['std'])
         nuTilda_pred = stacked_unnormalize(nuTilda_pred, constants['nuTilda']['mean'], constants['nuTilda']['std'])
-        p_pred = jnp.clip(p_pred, a_min=1000, a_max=np.inf)
+        # p_pred = jnp.clip(p_pred, a_min=1000, a_max=np.inf)
+        p_pred = jnp.clip(p_pred, 1000, np.inf)
         v_pred = stacked_unnormalize(v_pred, constants['v']['mean'], constants['v']['std'])
 
         # Compute face forces

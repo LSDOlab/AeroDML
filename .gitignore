@@ -416,3 +416,8 @@ logs/
 /cases/datasets/BWB/stored_files/projections/xlkNeh.pickle
 /cases/datasets/BWB/stored_files/projections/ydbhSJ.pickle
 /cases/datasets/BWB/stored_files/projections/zYndgJ.pickle
+
+# Generated figures and postprocessing plots
+figures/
+post_processing_plots/
+/cases/aircraft_BWB/mdo/visualize_sweeps/output/
