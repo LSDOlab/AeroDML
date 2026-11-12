@@ -5,6 +5,10 @@ optimization. `bwb_camber_opt.py` adjusts wing twist and camber to reduce cruise
 drag. `bwb_mdo.py` couples aerodynamics, beam structures, and mission
 calculations in a multidisciplinary design optimization (MDO) problem.
 
+![BWB geometry sweep and aerodynamic load comparison across Panel Method, RANS-GNN, and PG-RANS GNN](assets/bwb_sweep_comparison.gif)
+
+*Model comparison during geometry variations.*
+
 ## Software
 
 Install [AeroDML and the matching release assets](package.md#installation),

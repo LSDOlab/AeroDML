@@ -1,15 +1,19 @@
-"""Combine sweep frames from Panel, RANS-GNN, and PG-RANS GNN into a single 2x3 GIF.
+"""Combine sweep frames from Panel, RANS-GNN, and PG-RANS GNN into a presentation GIF.
 
-Layout (2 rows x 3 columns):
-  - Top row: Surface field pressures (Panel Pressure, RANS-GNN, PG-RANS GNN).
-  - Bottom row:
+Layout (3 rows x 3 columns + shared colorbar):
+  - Row 1: Surface field pressures (Panel Method, RANS-GNN, PG-RANS GNN).
+  - Row 2:
       - Column 1: Geometry parameter sliders with formatted numeric values.
       - Column 2: RANS-GNN cross-section.
       - Column 3: PG-RANS GNN cross-section.
-  - Column titles at top for each model with prominent, presentation-scale text.
+  - Row 3: Animated load plots across the three columns:
+      - Column 1: Lift [kN]
+      - Column 2: Drag [kN]
+      - Column 3: Reference Moment [kNm]
+  - Column titles at top for each model in black, blue, and gold.
   - Single shared colorbar at the bottom on a clean white background.
-  - Clean buffers and framing between all rows and columns.
 """
+import io
 import json
 import os
 from pathlib import Path
@@ -31,21 +35,27 @@ SWEEPS_DIR = Path(__file__).resolve().parent / "output" / "sweeps"
 OUTPUT_DIR = Path(__file__).resolve().parent / "output"
 MODELS = ["panel", "gnn", "pgnn"]  # Left-to-right column order
 MODEL_TITLES = {
-    "panel": "Panel Pressure",
+    "panel": "Panel Method (VortexAD)",
     "gnn": "RANS-GNN",
     "pgnn": "PG-RANS GNN",
+}
+MODEL_COLORS = {
+    "panel": "#0F172A",  # Black
+    "gnn": "#1D4ED8",    # Blue
+    "pgnn": "#B45309",   # Gold
 }
 OUTPUT_NAME = "combined.gif"
 
 # Pro Presentation Dimensions & Spacing
 PANEL_WIDTH = 860
 PANEL_HEIGHT = 560
+PLOT_HEIGHT = 400     # Height of each load plot in Row 3 (taller for presentation clarity)
 COL_GAP = 36          # Professional buffer between columns
-ROW_GAP = 42          # Professional buffer between top & bottom rows
+ROW_GAP = 36          # Professional buffer between rows
 MARGIN_X = 40         # Outer canvas horizontal margin
 MARGIN_TOP = 24       # Outer canvas top margin
-HEADER_HEIGHT = 65    # Prominent column title area
-COLORBAR_HEIGHT = 125 # Single shared colorbar area
+HEADER_HEIGHT = 75    # Prominent column title area
+COLORBAR_HEIGHT = 135 # Single shared colorbar area
 MARGIN_BOTTOM = 24    # Outer canvas bottom margin
 
 BG_COLOR = "white"        # Seamless pure white presentation background
@@ -55,9 +65,23 @@ KNOB_COLOR = "#0F172A"    # High-contrast dark charcoal knob
 TEXT_COLOR = "#0F172A"    # High-contrast dark charcoal text
 
 # Presentation-scale font sizes
-FONT_SIZE_TITLE = 38
-FONT_SIZE_LABEL = 26
-FONT_SIZE_NUM = 26
+FONT_SIZE_TITLE = 44
+FONT_SIZE_SLIDER = 30
+
+PLOT_CONFIGS = {
+    "lift": {
+        "title": "Lift",
+        "ylabel": "Lift [kN]",
+    },
+    "drag": {
+        "title": "Drag",
+        "ylabel": "Drag [kN]",
+    },
+    "moment": {
+        "title": "Reference Moment",
+        "ylabel": "Moment [kNm]",
+    },
+}
 
 PARAMETER_LABELS = {
     "pitch": "Pitch",
@@ -91,6 +115,11 @@ RESAMPLE = getattr(Image, "Resampling", Image).LANCZOS
 def get_font(size, bold=True):
     """Load a modern sans-serif font or fall back to default."""
     candidates = [
+        # macOS system fonts
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Library/Fonts/Arial Bold.ttf" if bold else "/Library/Fonts/Arial.ttf",
+        # Linux system fonts
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf" if bold else "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
@@ -101,17 +130,20 @@ def get_font(size, bold=True):
                 return ImageFont.truetype(path, size)
             except Exception:
                 pass
-    return ImageFont.load_default()
+    try:
+        return ImageFont.load_default(size=size)
+    except Exception:
+        return ImageFont.load_default()
 
 
 def build_colorbar_image(pressure_limits, target_height):
     """Render a single shared colorbar on white background with presentation-scale text."""
-    fig = plt.figure(figsize=(11, 0.95), dpi=140)
+    fig = plt.figure(figsize=(12, 1.1), dpi=140)
     ax = fig.add_axes([0.1, 0.45, 0.8, 0.32])
     norm = mcolors.Normalize(vmin=pressure_limits[0], vmax=pressure_limits[1])
     cb = colorbar.ColorbarBase(ax, cmap="jet", norm=norm, orientation="horizontal")
-    cb.set_label("Pressure [Pa]", fontsize=16, fontweight="bold", labelpad=8)
-    cb.ax.tick_params(labelsize=14)
+    cb.set_label("Pressure [Pa]", fontsize=20, fontweight="bold", labelpad=10)
+    cb.ax.tick_params(labelsize=16)
     cb.ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f"{int(x):,}"))
     fig.patch.set_facecolor("white")
 
@@ -150,16 +182,55 @@ def format_param_value(key, val):
     return f"{num_str}{unit}"
 
 
-def render_sliders_panel(frame_data, varying, width, height, font_label, font_num):
-    """Draw professional constant-color sliders with anchored numbers and prominent text."""
+def render_plot_card(key, frame_idx, num_frames, loads_data, ylim, width, height):
+    """Render an animated line plot card for Lift, Drag, or Reference Moment."""
+    fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+    plt.subplots_adjust(left=0.16, right=0.95, top=0.88, bottom=0.18)
+    x = np.arange(num_frames)
+
+    cfg = PLOT_CONFIGS[key]
+    for m in MODELS:
+        y = loads_data[key][m]
+        c = MODEL_COLORS.get(m, "black")
+        lbl = MODEL_TITLES.get(m, m)
+
+        # Faint full sweep trajectory background
+        ax.plot(x, y, color=c, alpha=0.22, linewidth=2.0)
+        # Animated trajectory up to current frame
+        ax.plot(x[:frame_idx + 1], y[:frame_idx + 1], color=c, linewidth=3.2, label=lbl)
+        # Marker on current frame value
+        ax.plot(x[frame_idx], y[frame_idx], marker="o", color=c, markersize=9)
+
+    ax.set_ylim(ylim)
+    ax.set_xlim(0, max(num_frames - 1, 1))
+
+    ax.set_title(cfg["title"], fontsize=21, fontweight="bold", pad=10)
+    ax.set_xlabel("Sweep Iteration", fontsize=17, fontweight="bold", labelpad=6)
+    ax.set_ylabel(cfg["ylabel"], fontsize=17, fontweight="bold", labelpad=6)
+    ax.tick_params(labelsize=14)
+    ax.grid(True, linestyle="--", alpha=0.35)
+
+    if key == "lift":
+        ax.legend(loc="upper left", fontsize=13, framealpha=0.85, handlelength=1.8)
+
+    fig.patch.set_facecolor("white")
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", facecolor="white", dpi=100)
+    plt.close(fig)
+    buf.seek(0)
+    with Image.open(buf) as im:
+        return im.convert("RGB")
+
+
+def render_sliders_panel(frame_data, varying, width, height, font):
+    """Draw professional constant-color sliders in full card with presentation-scale text."""
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
 
     if not varying:
-        bbox = draw.textbbox((0, 0), "Geometry Fixed", font=font_label)
+        bbox = draw.textbbox((0, 0), "Geometry Fixed", font=font)
         draw.text(((width - (bbox[2] - bbox[0])) // 2, (height - (bbox[3] - bbox[1])) // 2),
-                  "Geometry Fixed", fill="#4B5563", font=font_label)
-        draw.rounded_rectangle([0, 0, width - 1, height - 1], radius=8, outline=CARD_OUTLINE, width=1)
+                  "Geometry Fixed", fill="#4B5563", font=font)
         return image
 
     num_vars = len(varying)
@@ -182,15 +253,15 @@ def render_sliders_panel(frame_data, varying, width, height, font_label, font_nu
 
         x_left, x_right = 60, width - 60
         track_w = x_right - x_left
-        track_y = y_center + 8
+        track_y = y_center + 10
 
         # Parameter label on left
-        draw.text((x_left, y_center - 32), label, fill=TEXT_COLOR, font=font_label)
+        draw.text((x_left, y_center - 32), label, fill=TEXT_COLOR, font=font)
 
         # Formatted number anchored right-aligned at track right
-        num_bbox = draw.textbbox((0, 0), num_str, font=font_num)
+        num_bbox = draw.textbbox((0, 0), num_str, font=font)
         num_w = num_bbox[2] - num_bbox[0]
-        draw.text((x_right - num_w, y_center - 32), num_str, fill=TEXT_COLOR, font=font_num)
+        draw.text((x_right - num_w, y_center - 32), num_str, fill=TEXT_COLOR, font=font)
 
         # Constant-color track
         draw.rounded_rectangle([x_left, track_y, x_right, track_y + 10], radius=5, fill=TRACK_COLOR)
@@ -201,19 +272,16 @@ def render_sliders_panel(frame_data, varying, width, height, font_label, font_nu
         draw.ellipse([thumb_x - r, track_y + 5 - r, thumb_x + r, track_y + 5 + r],
                      fill=KNOB_COLOR, outline="white", width=2)
 
-    # Clean card outline
-    draw.rounded_rectangle([0, 0, width - 1, height - 1], radius=8, outline=CARD_OUTLINE, width=1)
     return image
 
 
 def load_plot_image(folder, image_info, width, height, is_cross_section=False):
-    """Load, crop out 'NN' label and colorbars, and resize into a clean card."""
+    """Load, crop out 'NN' label and colorbars, and resize cleanly onto canvas."""
     path = image_info.get("path")
     if path is None:
         blank = Image.new("RGB", (width, height), "white")
         draw = ImageDraw.Draw(blank)
         draw.text((30, 40), "Section outside the aircraft", fill="#475569")
-        draw.rounded_rectangle([0, 0, width - 1, height - 1], radius=8, outline=CARD_OUTLINE, width=1)
         return blank
 
     with Image.open(folder / path) as original:
@@ -224,13 +292,12 @@ def load_plot_image(folder, image_info, width, height, is_cross_section=False):
             cropped = img.crop((0, 45, original.width, 800)).resize((width, height), RESAMPLE)
             card = Image.new("RGB", (width, height), "white")
             card.paste(cropped, (0, 0))
-            ImageDraw.Draw(card).rounded_rectangle([0, 0, width - 1, height - 1], radius=8, outline="#CBD5E1", width=1)
             return card
         else:
-            # Surface view: erase colorbar from bottom center (x: 270..930, y: 800..895)
+            # Surface view: erase colorbar and any tick labels from bottom (x: 270..1050, y: 790..895)
             # This preserves the full swept wingtip at x < 270 (which extends down to y=849).
             draw_orig = ImageDraw.Draw(img)
-            draw_orig.rectangle([270, 800, 930, 895], fill="white")
+            draw_orig.rectangle([270, 790, 1050, 895], fill="white")
 
             # Crop top y=45 to remove 'NN', and crop bottom at y=885 to preserve the full wingtip
             cropped = img.crop((0, 45, original.width, 885)).resize((width, height), RESAMPLE)
@@ -239,18 +306,21 @@ def load_plot_image(folder, image_info, width, height, is_cross_section=False):
             return card
 
 
-def create_combined_frame(folder, frame_idx, frames_data, varying, colorbar_image,
-                          font_title, font_label, font_num):
-    """Assemble a single frame containing 6 panels in a 2x3 layout with clean buffers."""
+def create_combined_frame(folder, frame_idx, num_frames, frames_data, varying,
+                          loads_data, ylims, colorbar_image,
+                          font_title, font_slider):
+    """Assemble a single frame containing 3 rows x 3 columns plus shared colorbar."""
     canvas_w = 2 * MARGIN_X + 3 * PANEL_WIDTH + 2 * COL_GAP
-    canvas_h = MARGIN_TOP + HEADER_HEIGHT + 2 * PANEL_HEIGHT + ROW_GAP + COLORBAR_HEIGHT + MARGIN_BOTTOM
+    row1_y = MARGIN_TOP + HEADER_HEIGHT
+    row2_y = row1_y + PANEL_HEIGHT + ROW_GAP
+    row3_y = row2_y + PANEL_HEIGHT + ROW_GAP
+    cb_y = row3_y + PLOT_HEIGHT + 12
+    canvas_h = cb_y + COLORBAR_HEIGHT + MARGIN_BOTTOM
+
     canvas = Image.new("RGB", (canvas_w, canvas_h), BG_COLOR)
     draw = ImageDraw.Draw(canvas)
 
-    top_y = MARGIN_TOP + HEADER_HEIGHT
-    bot_y = top_y + PANEL_HEIGHT + ROW_GAP
-
-    # 1. Column Titles (presentation-scale text)
+    # 1. Column Titles (presentation-scale text with model-specific colors)
     for col_idx, model in enumerate(MODELS):
         title = MODEL_TITLES.get(model, model.upper())
         col_x = MARGIN_X + col_idx * (PANEL_WIDTH + COL_GAP)
@@ -259,20 +329,21 @@ def create_combined_frame(folder, frame_idx, frames_data, varying, colorbar_imag
         tw = bbox[2] - bbox[0]
         th = bbox[3] - bbox[1]
         y_title = MARGIN_TOP + (HEADER_HEIGHT - th) // 2
-        draw.text((col_center - tw // 2, y_title), title, fill=TEXT_COLOR, font=font_title)
+        color = MODEL_COLORS.get(model, TEXT_COLOR)
+        draw.text((col_center - tw // 2, y_title), title, fill=color, font=font_title)
 
-    # 2. Top Row: Surface Field Pressures for all 3 models
+    # 2. Row 1: Surface Field Pressures for all 3 models
     for col_idx, model in enumerate(MODELS):
         col_x = MARGIN_X + col_idx * (PANEL_WIDTH + COL_GAP)
         meta = json.loads((folder / f"{model}_{frame_idx:04d}.json").read_text())
         surf_info = meta["plot_images"][0]
         surf_img = load_plot_image(folder, surf_info, PANEL_WIDTH, PANEL_HEIGHT, is_cross_section=False)
-        canvas.paste(surf_img, (col_x, top_y))
+        canvas.paste(surf_img, (col_x, row1_y))
 
-    # 3. Bottom Row:
-    # Column 0: Sliders showing each changing geometry parameter
-    slider_panel = render_sliders_panel(frames_data[frame_idx], varying, PANEL_WIDTH, PANEL_HEIGHT, font_label, font_num)
-    canvas.paste(slider_panel, (MARGIN_X, bot_y))
+    # 3. Row 2:
+    # Column 0: Full Geometry parameter sliders card (as originally designed)
+    slider_panel = render_sliders_panel(frames_data[frame_idx], varying, PANEL_WIDTH, PANEL_HEIGHT, font_slider)
+    canvas.paste(slider_panel, (MARGIN_X, row2_y))
 
     # Column 1 & 2: Cross-sections for RANS-GNN and PG-RANS GNN
     for col_idx, model in enumerate(["gnn", "pgnn"], start=1):
@@ -280,17 +351,24 @@ def create_combined_frame(folder, frame_idx, frames_data, varying, colorbar_imag
         meta = json.loads((folder / f"{model}_{frame_idx:04d}.json").read_text())
         xc_info = meta["plot_images"][1]
         xc_img = load_plot_image(folder, xc_info, PANEL_WIDTH, PANEL_HEIGHT, is_cross_section=True)
-        canvas.paste(xc_img, (col_x, bot_y))
+        canvas.paste(xc_img, (col_x, row2_y))
 
-    # 4. Bottom Colorbar (centered horizontally)
+    # 4. Row 3: Three animated load plots under the columns (Lift, Drag, Reference Moment)
+    plot_keys = ["lift", "drag", "moment"]
+    for col_idx, key in enumerate(plot_keys):
+        col_x = MARGIN_X + col_idx * (PANEL_WIDTH + COL_GAP)
+        plot_card = render_plot_card(key, frame_idx, num_frames, loads_data, ylims[key], PANEL_WIDTH, PLOT_HEIGHT)
+        canvas.paste(plot_card, (col_x, row3_y))
+
+    # 5. Shared Colorbar at the bottom (centered horizontally)
     cb_x = (canvas_w - colorbar_image.width) // 2
-    canvas.paste(colorbar_image, (cb_x, bot_y + PANEL_HEIGHT + 10))
+    canvas.paste(colorbar_image, (cb_x, cb_y))
 
     return canvas
 
 
 def combine_sweep_folder(folder, output_paths):
-    """Combine frames of a single sweep into one 2x3 GIF."""
+    """Combine frames of a single sweep into one comprehensive GIF."""
     manifest_path = folder / "panel.json"
     if not manifest_path.exists():
         manifest_path = folder / "gnn.json"
@@ -300,17 +378,40 @@ def combine_sweep_folder(folder, output_paths):
     duration = manifest.get("frame_duration_ms", 150)
     pressure_limits = manifest.get("pressure_limits", (10000.0, 40000.0))
 
+    # Preload loads data for all models (Lift, Drag, Pitching Moment)
+    loads_data = {"lift": {}, "drag": {}, "moment": {}}
+    for m in MODELS:
+        loads_data["lift"][m] = []
+        loads_data["drag"][m] = []
+        loads_data["moment"][m] = []
+        for i in range(num_frames):
+            meta = json.loads((folder / f"{m}_{i:04d}.json").read_text())
+            loads = meta["aerodynamic_loads"]
+            loads_data["lift"][m].append(loads["lift_N"] / 1e3)                      # Convert to kN
+            loads_data["drag"][m].append(loads["drag_N"] / 1e3)                      # Convert to kN
+            loads_data["moment"][m].append(loads["pitching_moment_N_m"] / 1e3)       # Convert to kNm
+
+    ylims = {}
+    for key in ("lift", "drag", "moment"):
+        vals = [loads_data[key][m] for m in MODELS]
+        vmin = min(min(v) for v in vals)
+        vmax = max(max(v) for v in vals)
+        pad = max((vmax - vmin) * 0.08, 1.0)
+        ylims[key] = (vmin - pad, vmax + pad)
+
     varying = find_varying_parameters(frames_data)
     colorbar_image = build_colorbar_image(pressure_limits, COLORBAR_HEIGHT)
     font_title = get_font(FONT_SIZE_TITLE, bold=True)
-    font_label = get_font(FONT_SIZE_LABEL, bold=True)
-    font_num = get_font(FONT_SIZE_NUM, bold=True)
+    font_slider = get_font(FONT_SIZE_SLIDER, bold=True)
 
     print(f"Combining {folder.name}: {num_frames} frames (varying: {[k for k, _, _ in varying]})...")
     combined_frames = []
     for frame_idx in range(num_frames):
-        frame = create_combined_frame(folder, frame_idx, frames_data, varying,
-                                      colorbar_image, font_title, font_label, font_num)
+        frame = create_combined_frame(
+            folder, frame_idx, num_frames, frames_data, varying,
+            loads_data, ylims, colorbar_image,
+            font_title, font_slider
+        )
         combined_frames.append(frame)
 
     for out_path in output_paths:

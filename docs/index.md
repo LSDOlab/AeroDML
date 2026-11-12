@@ -18,6 +18,10 @@ included for comparison.
 
 *Surface and cross-section pressure predictions and errors for the single-fidelity, panel-guided, and Euler-guided GNN models compared with RANS for a sample test case.*
 
+![BWB geometry sweep and aerodynamic load comparison across Panel Method, RANS-GNN, and PG-RANS GNN](assets/bwb_sweep_comparison.gif)
+
+*Geometry sweeps showing predicted surface pressure fields, cross sections, and aerodynamic coefficients (lift, drag, and moment) across Panel Method (VortexAD), RANS-GNN, and PG-RANS GNN models.*
+
 This application was developed for high-performance computing (HPC) use on a
 blended-wing-body (BWB) configuration. It includes parallel CFD data generation,
 GPU training and evaluation, and gradient-based optimization examples. It can
