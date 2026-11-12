@@ -2,22 +2,21 @@
 
 ## Software
 
-Start with the [AeroDML installation](package.md#installation). Generating new
+[AeroDML installation](package.md#installation) is required for training. Generating new
 CFD data also requires a working **OpenFOAM and DAFoam** environment, including
 MPI, `mpi4py`, PETSc, `petsc4py`, and IDWarp. The geometry scripts use
 `csdl_alpha`, `lsdo_geo`, and `lsdo_function_spaces`; the panel scripts also use
-`VortexAD` and `meshio`. Install their dependencies, including `vedo`.
-These tools are separate from the core package installation.
+`VortexAD`.
+These tools are separate from the core package installation. More information on these packages are noted in the [MDO](mdo.md#tested-environment-snapshot-for-geometry-sweep-visualization) section.
 
-Training uses JAX and Optax. For GPU training, install a CUDA-enabled JAX
-build compatible with your machine. Set up the CFD shell environment and adapt
-the batch scripts to your cluster before generating data.
+Training uses JAX and Optax. For GPU training, a CUDA-enabled JAX
+build compatible with your machine is required.
 
-## Generate a dataset
+## Dataset generation
 
-The BWB data scripts are in `cases/datasets/BWB/`.
+The BWB data and data generation scripts are in `cases/datasets/BWB/`.
 
-### 1. Define the cases
+### 1. Input sampling
 
 From `cases/datasets/BWB/`, copy the helper scripts into a new dataset directory
 (replace `YOUR_DATASET` with your dataset name):
@@ -35,18 +34,16 @@ count. Keep `data_dir=""` to write into the current directory, then run:
 python build_configs.py
 ```
 
-This creates `cases.json` using Latin hypercube sampling. It refuses to overwrite
-an existing `cases.json`: regenerating configurations would break their
-correspondence with previously generated data.
+This creates `cases.json` using Latin hypercube sampling which records the generated sample inputs.
 
-### 2. Prepare the geometry and mesh
+### 2. Geometry and mesh preparation
 
 Use a common OpenFOAM reference mesh and deform it for each geometry so every
 case keeps the same connectivity. Review the geometry mapping, boundary patches,
 and solver settings. The RANS batch script expects a warm-start solution at
 `<MESH_DIR>/processor0/9999`.
 
-### 3. Run the solvers
+### 3. CFD dataset generation
 
 From `cases/datasets/BWB/`, generate RANS data for the configured cases:
 
@@ -58,7 +55,7 @@ For panel-guided or Euler-guided training, generate the matching low-fidelity
 cases with `generate_panel.py` or `generate_euler_single.py` and their batch
 scripts.
 
-### 4. Check and split the data
+### 4. Dataset splitting
 
 From `cases/datasets/BWB/data/YOUR_DATASET/`, summarize the RANS solver logs:
 
@@ -82,7 +79,7 @@ This writes `split_cfd.json` with `train` and `test` labels; the training driver
 uses the held-out cases for validation. Use `--split split_cfd` when training
 with this file.
 
-## Train and analyze
+## Training and analysis
 
 The shared driver, `cases/aircraft_BWB/model/run.py`, loads the data, prepares
 the graph hierarchy, and handles training and analysis. From that directory:
