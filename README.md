@@ -24,18 +24,6 @@ See the [documentation](https://lsdolab.github.io/AeroDML/) for the project
 overview, package and model, data generation and training, and optimization.
 The same pages are available in [docs/](docs/index.md).
 
-## Tests
-
-The badge above shows the current GitHub Actions CPU test status. To run the
-suite locally from the repository root with the package installed:
-
-```bash
-JAX_PLATFORMS=cpu python -m unittest discover -s tests -v
-```
-
-These tests cover driver control flow, sample asset selection, and training
-logging. See [tests/README.md](tests/README.md) for coverage and GPU smoke tests.
-
 ## Download release assets
 
 Large data and model assets are distributed separately from the Git repository.
