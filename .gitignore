@@ -421,3 +421,4 @@ logs/
 figures/
 post_processing_plots/
 /cases/aircraft_BWB/mdo/visualize_sweeps/output/
+/cases/aircraft_BWB/mdo/visualize_graph_deformation/output/
