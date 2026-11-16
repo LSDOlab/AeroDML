@@ -20,6 +20,10 @@ other configurations.
 
 *Geometry sweeps showing predicted surface pressure fields, cross sections, and aerodynamic coefficients across Panel Method (VortexAD), RANS-GNN, and PG-RANS GNN models.*
 
+![Multiscale graph hierarchy and mesh deformation](docs/assets/graph_deformation.gif)
+
+*Multiscale graph hierarchy across fine and coarse graph levels deforming with geometry changes.*
+
 See the [documentation](https://lsdolab.github.io/AeroDML/) for the project
 overview, package and model, data generation and training, and optimization.
 The same pages are available in [docs/](docs/index.md).

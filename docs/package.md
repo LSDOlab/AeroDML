@@ -25,6 +25,10 @@ Node features describe the input flow state, node type, approximate wall
 distance, and direction to the nearest wall. Wall nodes also carry face area
 and surface normal. Edge features describe direction, length, and boundary type.
 
+![Multiscale graph hierarchy and mesh deformation](assets/graph_deformation.gif)
+
+*Three-level multiscale graph hierarchy (fine dual graph, coarse level 1, and coarse level 2) deforming with chord and wing sweep while preserving graph conectivity for U-Net pooling and unpooling.*
+
 ## The GNN
 
 The architecture is defined in `src/aerodml/model.py`, with neural-network
