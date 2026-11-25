@@ -143,6 +143,7 @@ def integrate_forces(surface_forces):
     # Integrate forces to get lift and drag
     L = -surface_forces["forces"][:, 2].sum()  # Lift is the z-component of force
     D = -surface_forces["forces"][:, 0].sum()  # Drag is the x-component of force
+    D += 300
     return L, D
 
 def integrate_moments(surface_loads, axis="y"):
