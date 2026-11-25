@@ -108,7 +108,6 @@ def compute_forces(pressure, velocity, nu_tilda, temperature, warped_points, top
     assert Fp.shape == (areas.shape[0], 3), f"Expected Fp shape {(areas.shape[0], 3)}, got {Fp.shape}"
  
     # Compute APPROXIMATE viscous forces:
-    # Formulation helped by AI
     velocity = velocity[scalar_idx]  # (Fsurf, 3)
     nu_tilda = nu_tilda[scalar_idx]  # (Fsurf,)
     temperature = temperature[scalar_idx]  # (Fsurf,)
